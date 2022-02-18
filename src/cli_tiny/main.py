@@ -58,8 +58,8 @@ def balance(env, wallet=None):
     tiny_solana = TinySolana(env)
     wallet = wallet or tiny_solana.keypair.public_key
     logger.info(f"get balance for: {wallet}")
-    balance_sol = tiny_solana.balance_sol(wallet)
-    balance_token = TinySolana(env).balance_token(wallet)
+    balance_sol = "{:,}".format(tiny_solana.balance_sol(wallet))
+    balance_token = "{:,}".format(TinySolana(env).balance_token(wallet))
     logger.info(f"{balance_sol} SOL")
     logger.info(f"{balance_token} Token")
 
@@ -67,7 +67,7 @@ def balance(env, wallet=None):
 @argh.arg("env", help="Solana env (dev / main)")
 @argh.arg("wallet", help="Wallet to receive the token")
 @argh.arg("amount", help="Amount to transfer")
-def transfer_token(env, wallet, amount):
+def transfer(env, wallet, amount):
     logger.header("transfer token")
     tiny_solana = TinySolana(env)
     tiny_solana.transfer_token(wallet, float(amount))
@@ -75,11 +75,19 @@ def transfer_token(env, wallet, amount):
 
 @argh.arg("env", help="Solana env (dev / main)")
 @argh.arg("csv", help="A csv file with wallet,amount to be transfer")
-@argh.arg("-c", "--continue", dest="in_process", action='store_true', help="Continue in-process run")
-def bulk_transfer_token(env, csv, in_process=False):
-    logger.header("bulk transfer token")
+def bulk_transfer_init(env, csv):
+    logger.header("bulk transfer token init")
     tiny_solana = TinySolana(env)
-    tiny_solana.bulk_transfer_token(csv, in_process=in_process)
+    tiny_solana.bulk_transfer_token_init(csv)
+
+
+@argh.arg("env", help="Solana env (dev / main)")
+@argh.arg("csv", help="A csv file with wallet,amount to be transfer")
+@argh.arg("-d", "--dry-run", action='store_true', help="Dry run - don't send transactions")
+def bulk_transfer(env, csv, dry_run=False):
+    logger.header(f"bulk transfer token (dry-run={dry_run})")
+    tiny_solana = TinySolana(env)
+    tiny_solana.bulk_transfer_token(csv, dry_run=dry_run)
 
 
 @argh.arg("env", help="Solana env (dev / main)")
@@ -92,7 +100,7 @@ def bulk_transfer_confirm(env, csv):
 
 def main():
     parser = argh.ArghParser(description='Tiny Solana Util')
-    parser.add_commands([balance, transfer_token, bulk_transfer_token, bulk_transfer_confirm])
+    parser.add_commands([balance, transfer, bulk_transfer, bulk_transfer_confirm, bulk_transfer_init])
     parser.dispatch()
 
 

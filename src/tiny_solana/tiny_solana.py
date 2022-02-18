@@ -15,7 +15,7 @@ from solana.rpc.api import Client
 from solana.keypair import Keypair
 from solana.rpc.types import TxOpts
 from solana.publickey import PublicKey
-from solana.rpc.core import RPCException
+from solana.rpc.core import RPCException, UnconfirmedTxError
 from solana.transaction import Transaction
 from spl.token.client import Token
 from spl.token.constants import TOKEN_PROGRAM_ID
@@ -35,9 +35,10 @@ class TinySolana:
         self.keypair = None
         self.account = None
         self.token_mint = None
+        self.token_decimals = None
         self.clock = time.monotonic
         self.run_start = self.clock()
-        self.config_folder = Path.home().joinpath(".tiny")
+        self.config_folder = Path.home().joinpath(".config/solo")
         self.config_file = self.config_folder.joinpath("config.ini")
         self.load_config()
         self.init(env)
@@ -65,7 +66,8 @@ class TinySolana:
         self.account = Account(content[:32])
         self.keypair = Keypair.from_secret_key(private_key)
         self.client = Client(self.rpc, commitment=Confirmed)
-        self.token_mint = self.config["addresses"]["token"]
+        self.token_mint = self.config["addresses"][f"{env}_token"]
+        self.token_decimals = int(self.config["addresses"][f"{env}_token_decimals"])
         self.token = Token(self.client, PublicKey(self.token_mint), TOKEN_PROGRAM_ID, self.keypair)
 
     def set_start_time(self):
@@ -87,7 +89,7 @@ class TinySolana:
             error = response["error"]
             logger.error(f"failed to get token balance. error: {error}")
             return 0
-        digits = 9
+        digits = self.token_decimals
         lamport = response["result"]["value"]
         return lamport / pow(10, digits)
 
@@ -117,12 +119,15 @@ class TinySolana:
         response = self.client.get_account_info(address)
         return response["result"]["value"] is not None
 
-    def transfer_token(self, dest: str, amount: float, token: str = None, decimals: int = 9) -> Response:
+    def transfer_token(self, dest: str, amount: float, token: str = None, decimals: int = None, dry_run: bool = False) -> Response:
         """
         Generate an instruction that transfers lamports from one account to another
-        """        
-        amount_lamport = int(amount * pow(10, 9))
+        """
+        decimals = decimals or self.token_decimals
+        amount_lamport = int(amount * pow(10, self.token_decimals))
         logger.info(f"going to transfer {amount} ({amount_lamport} lamport) from local wallet to {dest}")
+        if dry_run:
+            return Ok("test-run")
         if not self.is_it_token_account(dest):
             dest_token_address = str(self.get_associated_address(dest))
             logger.info(f"recipient associated token account: {dest_token_address}")
@@ -131,7 +136,7 @@ class TinySolana:
                 response = self.create_associated_token_account(dest)
                 if response.err:
                     logger.error(f"failed to transfer token")
-                    return Err(response)
+                    return response
             dest = dest_token_address
         token = token or self.token_mint
         transaction = Transaction()
@@ -170,9 +175,13 @@ class TinySolana:
             message = ex.args[0]["message"]
             logger.error(f"failed to create associate token account. RPC error: {message}")
             return Err(f"{ex}")
+        except UnconfirmedTxError as ex:
+            message = ex.args[0]
+            logger.error(f"failed to create associate token account. UnconfirmedTx error: {message}")
+            return Err(f"{message}")
         except Exception as ex:
             logger.error(f"failed to create associate token account. error: {ex}")
-            return Err(f"{ex}")
+            return Err(f"failed to create associate token account")
 
     def process_csv(self, csv_path: str) -> Dict:
         """
@@ -184,17 +193,42 @@ class TinySolana:
         for i, row in enumerate(reader):
             in_process_init[i] = dict(
                 wallet=row["wallet"],
-                amount=row["amount"],
+                amount=row["amount"].replace(",", ""),
                 finalized=False,
                 signature="",
                 error=""
             )
         return in_process_init
 
-    def bulk_transfer_token(self, transfer_csv_path: str, in_process: bool = False):
+    def bulk_transfer_token_init(self, transfer_csv_path: str):
+        logger.info(f"going to create transfer config file based on file: {transfer_csv_path}")
+        file_extension = os.path.splitext(transfer_csv_path)[1]
+        if file_extension != ".csv":
+            logger.error(f"unsupported file type: {file_extension}. expecting csv")
+            return
+        if not os.path.exists(transfer_csv_path):
+            logger.error(f"missing file: {transfer_csv_path}")
+            return
+        in_process_file = self.config_folder.joinpath(transfer_csv_path.replace(".csv", ".json"))
+        if in_process_file.exists():
+            in_process = json.loads(in_process_file.read_text())
+            left_items = sum(not i['signature'] for i in in_process.values())
+            total_to_transfer = sum(float(i['amount']) for i in in_process.values() if not i['signature'])
+            total_to_transfer_str = "{:,}".format(total_to_transfer)
+            logger.warning(f"transfer config file already exist: {in_process_file}. "
+                           f"left records: {left_items}, left to transfer: {total_to_transfer_str}")
+            return
+        in_process_init = self.process_csv(transfer_csv_path)
+        in_process_file.write_text(json.dumps(in_process_init))
+        in_process = json.loads(in_process_file.read_text())
+        total_to_transfer = sum(float(i['amount']) for i in in_process.values())
+        total_to_transfer_str = "{:,}".format(total_to_transfer)
+        logger.info(f"transfer config file been created: {in_process_file} "
+                    f"(total records: {len(in_process)}, total to transfer: {total_to_transfer_str})")
+
+    def bulk_transfer_token(self, transfer_csv_path: str, dry_run=False):
         """
         Transfer token to multiple addresses, based on the content of transfer_csv_path
-        If it's not the first run (running again for failure retry) need to run with in_process=True
         """
         logger.info(f"going to transfer tokens based on file: {transfer_csv_path}")
         file_extension = os.path.splitext(transfer_csv_path)[1]
@@ -205,13 +239,9 @@ class TinySolana:
             logger.error(f"missing file: {transfer_csv_path}")
             return
         in_process_file = self.config_folder.joinpath(transfer_csv_path.replace(".csv", ".json"))
-        if in_process_file.exists():
-            if not in_process:
-                logger.error(f"in process already exist: ({in_process_file}). indicate continue or delete file")
-                return
-        else:
-            in_process_init = self.process_csv(transfer_csv_path)
-            in_process_file.write_text(json.dumps(in_process_init))
+        if not in_process_file.exists():
+            logger.error(f"missing transfer config file: ({in_process_file}). run transfer init command to create it")
+            return
         in_process = json.loads(in_process_file.read_text())
         total_items = len(in_process)
         left_items = sum(not i['signature'] for i in in_process.values())
@@ -221,14 +251,21 @@ class TinySolana:
             if item.get("signature"):
                 continue
             counter += 1
-            logger.info(f"[{i}] handle transfer {counter}/{left_items}, elapsed time: {self.elapsed_time()}")
-            response = self.transfer_token(item["wallet"], float(item["amount"]))
+            current_token_balance = "N/A in dry-run" if dry_run else "{:,}".format(self.balance_token(self.keypair.public_key))
+            logger.info(f"[{i}] [{self.elapsed_time()}] handle transfer {counter}/{left_items}, current balance: {current_token_balance}")
+            response = self.transfer_token(item["wallet"], float(item["amount"]), dry_run=dry_run)
+            if dry_run:
+                continue
             if response.err:
                 in_process[i].update({"error": response.err})
             else:
-                in_process[i].update({"signature": response.ok})
+                in_process[i].update({"signature": response.ok, "error": ""})
             in_process_file.write_text(json.dumps(in_process))
-        logger.info("Done")
+        total_transferred = sum(float(i['amount']) for i in in_process.values() if i['signature'])
+        total_not_transferred = sum(float(i['amount']) for i in in_process.values() if not i['signature'])
+        total_transferred_str = "{:,}".format(total_transferred)
+        total_not_transferred_str = "{:,}".format(total_not_transferred)
+        logger.info(f"Done. total transferred: {total_transferred_str}, total not transferred: {total_not_transferred_str} (unverified)")
 
     def bulk_confirm_transactions(self, transfer_csv_path: str):
         """
@@ -250,7 +287,8 @@ class TinySolana:
             item = self.confirm_transaction(item["signature"])
             in_process[i].update({"finalized": item})
             in_process_file.write_text(json.dumps(in_process))
-        logger.info("Done")
+        total_finalized = sum(i['finalized'] for i in in_process.values())
+        logger.info(f"Done. total finalized: {total_finalized} / {len(in_process)}")
 
     def confirm_transaction(self, tx_sig: str, commitment: Commitment = Finalized, sleep_seconds: float = 1.0) -> bool:
         """
@@ -288,3 +326,9 @@ class TinySolana:
             maybe_rpc_error = resp.get("error")
             logger.error(f"Unable to confirm transaction {tx_sig}. {maybe_rpc_error}")
             return False
+
+    def get_signatures_for_address(self, address: str):
+        self.client.get_confirmed_signature_for_address2(PublicKey(PublicKey(address)))
+
+    def get_transaction_data(self, tx_sig: str):
+        self.client.get_confirmed_transaction(tx_sig)

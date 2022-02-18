@@ -11,8 +11,11 @@ to test specific commands on devnet before using on production.**
 ## Setup ##
 
 Installation is via pip install. 
+
+## Config File ##
+
 In addition to the package installation need to create a configuration file.
-The location of the configuration file is: ~/.tiny/config.ini
+The location of the configuration file is: ~/.config/solo/config.ini
 
 
 The configuration file should contain the following keys.
@@ -48,17 +51,19 @@ Get the current wallet SOL and Token balance, for example:
 tiny balance dev
 ```
 
-#### Transfer Token ####
+#### Single Transfer ####
 
 Transfer token from current wallet to a destination wallet.
 A single transfer example: 
 
 ```
-tiny transfer-token dev AuMtXeRS7hws6Ktw5R6tQq3LgDYE69HwwmG9kzNniScW 0.001
+tiny transfer dev AuMtXeRS7hws6Ktw5R6tQq3LgDYE69HwwmG9kzNniScW 0.001
 ```
 
-To run multiple transfers, need to create a csv file with the wanted transfers,
-with wallet & amount columns. For example:
+#### Bulk Transfer ####
+
+You can run multiple transfers in a bulk, based on input CSV file contains all the transfers data.
+The CSV should contain the following columns: wallet & amount. For example:
 
 ```csv
 wallet,amount
@@ -66,23 +71,21 @@ wallet,amount
 Gwm9mtLoD4z2BBnGbEbB4Suu8eR62eMwSZsj5Ms6UUJ,0.445
 ```
 
-Then need to call the following command:
+The bulk transfer consists the followings steps:
+* Init - prepare a json configuration file based on the given CSV file
+* Dry Run - display the planned transfer add_commands
+* Run - execute the transfer commands
+* Confirm - verify that the transactions state is finalized
+
+The commands are idempotent. You can run them multiple times. 
+Running the transfer commands multiple times will run failed transactions if there are any.
+
+Sample flow:
 
 ```
-tiny bulk-transfer-token dev transfer-file-path.csv
-```
-
-The first run will create a processing json file under the ~/.tiny folder.
-In case there are transfer failures and you want to re-run the failures commands,
-neet to run the command again with the `--continue` parameter:
-
-```
-tiny bulk-transfer-token dev transfer-file-path.csv -c
-```
-
-After you run the transfer you have the signatures in the processing file.
-To verify that all the positions are in Finalized state, need to run:
-
-```
+tiny bulk-transfer-init dev transfer-file-path.csv
+tiny bulk-transfer dev transfer-file-path.csv -d
+tiny bulk-transfer dev transfer-file-path.csv
 tiny bulk-transfer-confirm transfer-file-path.csv
 ```
+
