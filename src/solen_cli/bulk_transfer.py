@@ -2,7 +2,9 @@ import argh
 
 from solen import Solen
 
-from .main import log_print
+from .log_print import LogPrint
+
+log_print = LogPrint()
 
 
 @argh.arg("csv", help="A csv file with wallet,amount to be transfer")

@@ -3,7 +3,7 @@ import csv
 import json
 import time
 import logging
-from typing import Dict, Optional, Union
+from typing import Dict, Union, Optional
 from pathlib import Path
 from datetime import timedelta
 from functools import partial
@@ -29,7 +29,7 @@ open_utf8 = partial(open, encoding="UTF-8")
 
 
 class Solen:  # pylint: disable=too-many-instance-attributes
-    def __init__(self, env: Optional[str]):
+    def __init__(self, env: Optional[str] = None):
         self.env = env
         self.rpc = None
         self.token = None

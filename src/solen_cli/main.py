@@ -1,10 +1,13 @@
 # pylint: disable=missing-docstring, unused-variable, no-self-use, invalid-name, broad-except
-import argh
 import logging
+
+import argh
 
 from solen import Solen
 
 from .log_print import LogPrint
+from .bulk_transfer import run, init, confirm
+
 log_print = LogPrint()
 
 loggerpy = logging.getLogger("solen")
@@ -45,8 +48,6 @@ def transfer(wallet, amount, env=None):
 
 
 def main():
-    from .bulk_transfer import init, run, confirm  # pylint: disable=import-outside-toplevel
-
     parser = argh.ArghParser(description="Solana Token Util (Solen)")
     parser.add_commands([balance, transfer])
     parser.add_commands([init, run, confirm], namespace="bulk-transfer")
