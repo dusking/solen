@@ -15,7 +15,7 @@ Installation is via pip install.
 ## Config File ##
 
 In addition to the package installation need to create a configuration file.
-The location of the configuration file is: ~/.config/solo/config.ini
+The location of the configuration file is: ~/.config/solen/config.ini
 
 
 The configuration file should contain the following keys.
@@ -32,6 +32,7 @@ dev_token = 5YsymBWSdNiKWN5s8McLHw8toJLgZjhkx23gKgtWG2rZ
 main_token = Fm9rHUTF5v3hwMLbStjZXqNBBoZyGriQaFM6sTFz3K8A
 
 [solana]
+default_env = dev
 keypair = ~/.config/solana/id.json
 cli_config = ~/.config/solana/cli/config.yml
 ```
@@ -40,7 +41,7 @@ cli_config = ~/.config/solana/cli/config.yml
 
 #### Env ####
 The util perform actions on the Solana blockchain. 
-Each command get env parameter - dev or main.
+Each command get env parameter that should be used to select the Solana RPC uri: dev or main.
 The command will create Solana client on the relevant net, 
 based on the node url in the configuration file. 
 
@@ -50,7 +51,7 @@ based on the node url in the configuration file.
 Get the current wallet SOL and Token balance, for example:
 
 ```
-solen balance dev
+solen balance --env dev
 ```
 
 #### Single Transfer ####
@@ -59,7 +60,7 @@ Transfer token from current wallet to a destination wallet.
 A single transfer example: 
 
 ```
-solen transfer dev AuMtXeRS7hws6Ktw5R6tQq3LgDYE69HwwmG9kzNniScW 0.001
+solen transfer AuMtXeRS7hws6Ktw5R6tQq3LgDYE69HwwmG9kzNniScW 0.001
 ```
 
 #### Bulk Transfer ####
@@ -85,9 +86,10 @@ Running the transfer commands multiple times will run failed transactions if the
 Sample flow:
 
 ```
-solen bulk-transfer-init dev transfer-file-path.csv
-solen bulk-transfer dev transfer-file-path.csv -d
-solen bulk-transfer dev transfer-file-path.csv
-solen bulk-transfer-confirm transfer-file-path.csv
+solen bulk-transfer -h
+solen bulk-transfer init transfer-file-path.csv --env dev
+solen bulk-transfer run transfer-file-path.csv --dry-run --env dev
+solen bulk-transfer run transfer-file-path.csv --env dev
+solen bulk-transfer confirm transfer-file-path.csv --env dev
 ```
 

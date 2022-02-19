@@ -3,7 +3,7 @@ import csv
 import json
 import time
 import logging
-from typing import Dict, Union
+from typing import Dict, Optional, Union
 from pathlib import Path
 from datetime import timedelta
 from functools import partial
@@ -29,7 +29,8 @@ open_utf8 = partial(open, encoding="UTF-8")
 
 
 class Solen:  # pylint: disable=too-many-instance-attributes
-    def __init__(self, env):
+    def __init__(self, env: Optional[str]):
+        self.env = env
         self.rpc = None
         self.token = None
         self.client = None
@@ -40,10 +41,11 @@ class Solen:  # pylint: disable=too-many-instance-attributes
         self.token_decimals = None
         self.clock_time = time.perf_counter
         self.run_start = self.clock_time()
-        self.config_folder = Path.home().joinpath(".config/solo")
+        self.config_folder = Path.home().joinpath(".config/solen")
         self.config_file = self.config_folder.joinpath("config.ini")
         self.load_config()
         self.init(env)
+        logger.info(f"Solana client connected: {self.is_connected()}, env: {self.env} - {self.rpc}")
 
     def load_config(self):
         """
@@ -57,18 +59,19 @@ class Solen:  # pylint: disable=too-many-instance-attributes
         """
         Init members based on env
         """
-        if env not in self.config["endpoint"]:
+        self.env = env or self.config["solana"]["default_env"]
+        if self.env not in self.config["endpoint"]:
             valid_rpc_options = list(self.config["endpoint"].keys())
-            logger.error(f"env {env} does not exists in config file. valid options: {valid_rpc_options}")
-            raise Exception(f"missing env {env} in config")
-        self.rpc = self.config["endpoint"][env]
+            logger.error(f"env {self.env} does not exists in config file. valid options: {valid_rpc_options}")
+            raise Exception(f"missing env {self.env} in config")
+        self.rpc = self.config["endpoint"][self.env]
         with open_utf8(os.path.expanduser(self.config["solana"]["keypair"])) as f:
             content = f.read()
             private_key = bytes(json.loads(content))
         self.account = Account(content[:32])
         self.keypair = Keypair.from_secret_key(private_key)
         self.client = Client(self.rpc, commitment=Confirmed)
-        self.token_mint = self.config["addresses"][f"{env}_token"]
+        self.token_mint = self.config["addresses"][f"{self.env}_token"]
         self.token_decimals = self.get_token_decimals(self.token_mint)
         self.token = Token(self.client, PublicKey(self.token_mint), TOKEN_PROGRAM_ID, self.keypair)
 
@@ -205,10 +208,10 @@ class Solen:  # pylint: disable=too-many-instance-attributes
         in_process_init = {}
         with open_utf8(csv_path) as f:
             reader = csv.DictReader(f)
-        for i, row in enumerate(reader):
-            in_process_init[i] = dict(
-                wallet=row["wallet"], amount=row["amount"].replace(",", ""), finalized=False, signature="", error=""
-            )
+            for i, row in enumerate(reader):
+                in_process_init[i] = dict(
+                    wallet=row["wallet"], amount=row["amount"].replace(",", ""), finalized=False, signature="", error=""
+                )
         return in_process_init
 
     def bulk_transfer_token_init(self, transfer_csv_path: str):
