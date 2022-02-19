@@ -1,7 +1,6 @@
 name: Quality check
 on:
   push
-  pull_request
 
 
 jobs:
