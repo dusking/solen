@@ -1,16 +1,37 @@
 Solen - A Solana Token Util
 ====
 
+[![PypI](http://img.shields.io/pypi/v/solen.svg)](http://img.shields.io/pypi/v/solen.svg)
+
 This library aim to handle the RPC commands for a Solana based Token.
 
+Features:
+* Balance of local wallet for SOL / Token
+* Transfer token to recipient wallet 
+* Bulk token transfer to multiple recipients
+
+Suggestions and PRs welcome!
 
 **Note: This is experimental software for a young ecosystem. 
 Use at your own risk. The author is not responsible for misuse of the software or for the user failing 
 to test specific commands on devnet before using on production.**
 
-## Setup ##
+## Installation ##
 
-Installation is via pip install. 
+Latest release installation using pip install:
+
+```
+pip install solen
+```
+
+To install from source, the latest in-progress version, you can clone the source and install using pip:
+
+```
+git clone git@github.com:dusking/solen.git
+cd solen
+git checkout main
+pip install ./
+```
 
 ## Config File ##
 
@@ -34,7 +55,6 @@ main_token = Fm9rHUTF5v3hwMLbStjZXqNBBoZyGriQaFM6sTFz3K8A
 [solana]
 default_env = dev
 keypair = ~/.config/solana/id.json
-cli_config = ~/.config/solana/cli/config.yml
 ```
 
 ## Usage ##
