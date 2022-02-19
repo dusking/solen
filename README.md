@@ -1,7 +1,7 @@
-Tiny Transfer
+Solen - A Solana Token Util
 ====
 
-This is a Solana Py wrapper for token transfer.
+This library aim to handle the RPC commands for a Solana based Token.
 
 
 **Note: This is experimental software for a young ecosystem. 
@@ -28,10 +28,12 @@ dev = https://api.devnet.solana.com
 main = https://api.mainnet-beta.solana.com
 
 [addresses]
-token = 5YsymBWSdNiKWN5s8McLHw8toJLgZjhkx23gKgtWG2rZ
+dev_token = 5YsymBWSdNiKWN5s8McLHw8toJLgZjhkx23gKgtWG2rZ
+main_token = Fm9rHUTF5v3hwMLbStjZXqNBBoZyGriQaFM6sTFz3K8A
 
 [solana]
 keypair = ~/.config/solana/id.json
+cli_config = ~/.config/solana/cli/config.yml
 ```
 
 ## Usage ##
@@ -48,7 +50,7 @@ based on the node url in the configuration file.
 Get the current wallet SOL and Token balance, for example:
 
 ```
-tiny balance dev
+solen balance dev
 ```
 
 #### Single Transfer ####
@@ -57,7 +59,7 @@ Transfer token from current wallet to a destination wallet.
 A single transfer example: 
 
 ```
-tiny transfer dev AuMtXeRS7hws6Ktw5R6tQq3LgDYE69HwwmG9kzNniScW 0.001
+solen transfer dev AuMtXeRS7hws6Ktw5R6tQq3LgDYE69HwwmG9kzNniScW 0.001
 ```
 
 #### Bulk Transfer ####
@@ -83,9 +85,9 @@ Running the transfer commands multiple times will run failed transactions if the
 Sample flow:
 
 ```
-tiny bulk-transfer-init dev transfer-file-path.csv
-tiny bulk-transfer dev transfer-file-path.csv -d
-tiny bulk-transfer dev transfer-file-path.csv
-tiny bulk-transfer-confirm transfer-file-path.csv
+solen bulk-transfer-init dev transfer-file-path.csv
+solen bulk-transfer dev transfer-file-path.csv -d
+solen bulk-transfer dev transfer-file-path.csv
+solen bulk-transfer-confirm transfer-file-path.csv
 ```
 

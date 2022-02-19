@@ -7,16 +7,16 @@ from version_helpers import version
 
 
 setup_kwargs = dict(
-    name="tiny_solana",
+    name="solen",
     version=version(),
     license="LICENSE",
     platforms="All",
-    description="Tiny Solana Util",
+    description="Solana Token Util (Solen)",
     package_dir={"": "src"},
     packages=find_packages("src"),
     include_package_data=True,
     entry_points={
-        "console_scripts": ["tiny = cli_tiny.main:main"],
+        "console_scripts": ["solen = cli_solen.main:main"],
     },
     install_requires=[
         "solana",

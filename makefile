@@ -20,7 +20,7 @@ verbose_test:
 	pytest tests -vvv -s
 
 rebase:
-	git checkout master
+	git checkout main
 	git pull
 	git checkout -
-	git rebase master
+	git rebase main
