@@ -2,6 +2,7 @@
 import logging
 
 import argh
+import pkg_resources
 
 from solen import Solen
 
@@ -17,6 +18,13 @@ ch.setLevel(logging.DEBUG)
 formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
 ch.setFormatter(formatter)
 loggerpy.addHandler(ch)
+
+
+def version():
+    """
+    Current installed version
+    """
+    log_print.info(pkg_resources.require("solen")[0].version)
 
 
 @argh.arg("-e", "--env", help="Solana env (dev / main)")
@@ -49,7 +57,7 @@ def transfer(wallet, amount, env=None):
 
 def main():
     parser = argh.ArghParser(description="Solana Token Util (Solen)")
-    parser.add_commands([balance, transfer])
+    parser.add_commands([version, balance, transfer])
     parser.add_commands([init, run, confirm], namespace="bulk-transfer")
     parser.dispatch()
 

@@ -18,9 +18,19 @@ to test specific commands on devnet before using on production.**
 
 ## Installation ##
 
-Latest release installation using pip install:
+To install the package you'll need to use pip. To install pip on ubuntu:
 
 ```
+sudo apt update
+sudo apt install python3-pip
+sudo apt install python3.8-venv
+```
+
+Latest release installation using pip install (it's recommended to use python virtualenv):
+
+```
+python3 -m venv pyenv
+source pyenv/bin/activate
 pip install solen
 ```
 

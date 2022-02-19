@@ -261,7 +261,9 @@ class Solen:  # pylint: disable=too-many-instance-attributes
             return
         in_process_file = self.config_folder.joinpath(transfer_csv_path.replace(".csv", ".json"))
         if not in_process_file.exists():
-            logger.error(f"missing transfer config file: ({in_process_file}). run transfer init command to create it")
+            logger.error(
+                f"missing transfer config file: ({in_process_file}). run bulk-transfer init command to create it"
+            )
             return
         in_process = json.loads(in_process_file.read_text(encoding="utf-8"))
         total_items = len(in_process)

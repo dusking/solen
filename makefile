@@ -1,3 +1,6 @@
+clean:
+	rm -rf dist build _build __pycache__ *.egg-info
+
 pre_push:
 	make rebase
 	make format
@@ -28,5 +31,6 @@ rebase:
 build:
 	python setup.py sdist
 
-upload:
+publish:
+	make clean
 	twine upload dist/*
