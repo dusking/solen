@@ -1,0 +1,20 @@
+name: Quality check
+on:
+  push
+
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: ricardochaves/python-lint@v1.4.0
+        with:
+          python-root-list: "src tests"
+          use-pycodestyle: false
+          use-flake8: false
+          use-black: false
+          use-mypy: false
+          use-pylint: true
+          use-isort: true
+          extra-pylint-options: "--disable import-error"
