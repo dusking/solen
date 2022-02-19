@@ -40,7 +40,7 @@ class Logger:
         header = self.yellow(header)
         header_length = 40
         header_padding = "-"
-        print(f"{header:{header_padding}^{header_length}}") 
+        print(f"{header:{header_padding}^{header_length}}")
 
     def warning(self, msg):
         print(self.yellow(msg))
