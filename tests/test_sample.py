@@ -1,6 +1,6 @@
-from tiny_solana import TinySolana
+from solen import Solen
 
 
 def test_env():
-    tiny_solana = TinySolana("dev")
-    assert tiny_solana.rpc == "https://api.devnet.solana.com"
+    solen = Solen("dev")
+    assert solen.rpc == "https://api.devnet.solana.com"

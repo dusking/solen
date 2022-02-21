@@ -28,6 +28,17 @@ def version():
 
 
 @argh.arg("-e", "--env", help="Solana env (dev / main)")
+def info(env=None):
+    """
+    Display local wallet balance of SOL & Token
+    """
+    log_print.header("get token info")
+    solen = Solen(env)
+    log_print.info(f"Token: {solen.token.pubkey}")
+    log_print.info(f"Decimals: {solen.token_decimals}")
+
+
+@argh.arg("-e", "--env", help="Solana env (dev / main)")
 @argh.arg("-w", "--wallet", default=None, help="Wallet to receive the token balance for")
 def balance(wallet=None, env=None):
     """
@@ -57,7 +68,7 @@ def transfer(wallet, amount, env=None):
 
 def main():
     parser = argh.ArghParser(description="Solana Token Util (Solen)")
-    parser.add_commands([version, balance, transfer])
+    parser.add_commands([version, info, balance, transfer])
     parser.add_commands([init, run, confirm], namespace="bulk-transfer")
     parser.dispatch()
 
