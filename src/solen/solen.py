@@ -22,6 +22,7 @@ from spl.token.constants import TOKEN_PROGRAM_ID
 from solana.rpc.commitment import COMMITMENT_RANKS, Confirmed, Finalized, Commitment
 from spl.token.instructions import TransferCheckedParams, transfer_checked
 
+from .nft import NFT
 from .response import Ok, Err, Response
 
 logger = logging.getLogger("solen")
@@ -31,13 +32,13 @@ open_utf8 = partial(open, encoding="UTF-8")
 class Solen:  # pylint: disable=too-many-instance-attributes
     def __init__(self, env: Optional[str] = None):
         self.env = env
-        self.rpc = None
         self.token = None
         self.client = None
         self.config = None
         self.keypair = None
         self.account = None
         self.token_mint = None
+        self.rpc_endpoint = None
         self.token_decimals = None
         self.clock_time = time.perf_counter
         self.run_start = self.clock_time()
@@ -45,52 +46,61 @@ class Solen:  # pylint: disable=too-many-instance-attributes
         self.config_file = self.config_folder.joinpath("config.ini")
         self.load_config()
         self.init(env)
-        logger.info(f"Solana client connected: {self.is_connected()}, env: {self.env} - {self.rpc}")
+        self.nft = NFT(self.client, self.keypair, self.rpc_endpoint)
+        logger.info(f"Solana client connected: {self.is_connected()}, env: {self.env} - {self.rpc_endpoint}")
 
     def load_config(self):
-        """
-        Load configuration
-        """
-        self.config_folder.mkdir(parents=True, exist_ok=True)
+        """Load configuration from config file, located at ~/.config/solen/config.ini"""
+        if not self.config_file.exists():
+            logger.error(f"missing config file: {self.config_file}. you can create it using the config set command")
+            raise Exception(f"missing config file: {self.config_file}")
         self.config = ConfigParser()
         self.config.read(str(self.config_file))
 
     def init(self, env: str):
-        """
-        Init members based on env
+        """Init Solen based on env
+
+        >>> solen = Solen("dev")
         """
         self.env = env or self.config["solana"]["default_env"]
         if self.env not in self.config["endpoint"]:
             valid_rpc_options = list(self.config["endpoint"].keys())
             logger.error(f"env {self.env} does not exists in config file. valid options: {valid_rpc_options}")
             raise Exception(f"missing env {self.env} in config")
-        self.rpc = self.config["endpoint"][self.env]
+        self.rpc_endpoint = self.config["endpoint"][self.env]
         with open_utf8(os.path.expanduser(self.config["solana"]["keypair"])) as f:
             content = f.read()
             private_key = bytes(json.loads(content))
         self.account = Account(content[:32])
         self.keypair = Keypair.from_secret_key(private_key)
-        self.client = Client(self.rpc, commitment=Confirmed)
+        self.client = Client(self.rpc_endpoint, commitment=Confirmed)
         self.token_mint = self.config["addresses"][f"{self.env}_token"]
-        self.token_decimals = self.get_token_decimals(self.token_mint)
         self.token = Token(self.client, PublicKey(self.token_mint), TOKEN_PROGRAM_ID, self.keypair)
+        self.token_decimals = self.get_token_decimals()
 
-    def set_start_time(self):
+    def _set_start_time(self):
         self.run_start = self.clock_time()
 
-    def elapsed_time(self):
+    def _elapsed_time(self):
         elapsed_time = self.clock_time() - self.run_start
         return str(timedelta(seconds=elapsed_time)).split(".", maxsplit=1)[0]
 
     def is_connected(self):
+        """Health check.
+
+        >>> solen = Solen("dev")
+        >>> solen.is_connected()
+        True
+        """
         return self.client.is_connected()
 
-    def get_token_decimals(self, pubkey: Union[PublicKey, str]) -> int:
-        """
-        Returns the decimal config of an SPL Token type
-        """
-        response = self.client.get_token_supply(str(pubkey), commitment=Confirmed)
-        return response["result"]["value"]["decimals"]
+    def get_token_decimals(self, pubkey: Optional[Union[PublicKey, str]] = None) -> int:
+        """Returns the decimal config of an SPL Token type"""
+        if pubkey:
+            response = self.client.get_token_supply(str(pubkey), commitment=Confirmed)
+            return response["result"]["value"]["decimals"]
+        info = self.token.get_mint_info()
+        return info.decimals
 
     def balance_sol(self, owner: str) -> int:
         """
@@ -101,7 +111,7 @@ class Solen:  # pylint: disable=too-many-instance-attributes
             error = response["error"]
             logger.error(f"failed to get token balance. error: {error}")
             return 0
-        digits = self.token_decimals
+        digits = 9
         lamport = response["result"]["value"]
         return lamport / pow(10, digits)
 
@@ -109,12 +119,20 @@ class Solen:  # pylint: disable=too-many-instance-attributes
         """
         Returns the token amount for the given wallet address .
         """
-        response = self.token.get_balance(self.get_associated_address(owner, self.token_mint))
-        if "error" in response:
-            error = response["error"]
-            logger.error(f"failed to get token balance. error: {error}")
+        try:
+            response = self.token.get_balance(self.get_associated_address(owner, self.token_mint))
+            if "error" in response:
+                error = response["error"]
+                logger.error(f"failed to retrieve token balance. error: {error}")
+                return 0
+            return response["result"]["value"]["uiAmount"]
+        except RPCException as ex:
+            message = dict(ex.args[0])["message"]
+            logger.error(f"failed to retrieve balance. RPC error: {message}")
             return 0
-        return response["result"]["value"]["uiAmount"]
+        except Exception as ex:
+            logger.error(f"failed to retrieve balance.. error: {ex}")
+            return 0
 
     def get_associated_address(self, owner: str, token: str = None) -> PublicKey:
         """
@@ -276,7 +294,7 @@ class Solen:  # pylint: disable=too-many-instance-attributes
             counter += 1
             current_token_balance = "N/A in dry-run" if dry_run else f"{self.balance_token(self.keypair.public_key):,}"
             logger.info(
-                f"[{i}] [{self.elapsed_time()}] handle transfer {counter}/{left_items}, current balance: "
+                f"[{i}] [{self._elapsed_time()}] handle transfer {counter}/{left_items}, current balance: "
                 f"{current_token_balance}"
             )
             response = self.transfer_token(item["wallet"], float(item["amount"]), dry_run=dry_run)

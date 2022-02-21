@@ -1,7 +1,7 @@
 Solen - A Solana Token Util
 ====
-
 [![PypI](http://img.shields.io/pypi/v/solen.svg)](http://img.shields.io/pypi/v/solen.svg)
+
 
 This library aim to handle the RPC commands for a Solana based Token.
 
