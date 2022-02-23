@@ -32,7 +32,8 @@ setup_kwargs = dict(
     install_requires=[
         "solana",
         "colorama",
-        "argh"
+        "argh",
+        "asyncit"
     ],
     python_requires=">=3.7",
 )

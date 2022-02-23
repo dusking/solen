@@ -4,7 +4,7 @@ import logging
 import argh
 import pkg_resources
 
-from solen import Solen
+from solen import Context, NFTClient, SOLClient, TokenClient
 
 from .log_print import LogPrint
 from .bulk_transfer import run, init, confirm
@@ -28,30 +28,19 @@ def version():
 
 
 @argh.arg("-e", "--env", help="Solana env (dev / main)")
-def info(env=None):
-    """
-    Display local wallet balance of SOL & Token
-    """
-    log_print.header("get token info")
-    solen = Solen(env)
-    log_print.info(f"Token: {solen.token.pubkey}")
-    log_print.info(f"Decimals: {solen.token_decimals}")
-
-
-@argh.arg("-e", "--env", help="Solana env (dev / main)")
-@argh.arg("-w", "--wallet", default=None, help="Wallet to receive the token balance for")
-def balance(wallet=None, env=None):
+def balance(env=None):
     """
     Display local wallet balance of SOL & Token
     """
     log_print.header("get token balance")
-    solen = Solen(env)
-    wallet = wallet or solen.keypair.public_key
+    context = Context(env)
+    wallet = context.keypair.public_key
     log_print.info(f"get balance for: {wallet}")
-    balance_sol = f"{solen.balance_sol(wallet):,}"
-    balance_token = f"{solen.balance_token(wallet):,}"
-    log_print.info(f"{balance_sol} SOL")
-    log_print.info(f"{balance_token} Token")
+    log_print.info(f"{SOLClient(env, context=context).balance():,} SOL")
+    token_client = TokenClient(env, context=context)
+    registered_info = token_client.get_registered_info()
+    token_symbol = registered_info[0].symbol if registered_info else token_client.token_mint
+    log_print.info(f"{token_client.balance()} {token_symbol}")
 
 
 @argh.arg("wallet", help="Wallet to receive the token")
@@ -62,13 +51,13 @@ def transfer(wallet, amount, env=None):
     Transfer token from local wallet ro recipient
     """
     log_print.header("transfer token")
-    solen = Solen(env)
-    solen.transfer_token(wallet, float(amount))
+    token_client = TokenClient(env)
+    token_client.transfer_token(wallet, float(amount))
 
 
 def main():
     parser = argh.ArghParser(description="Solana Token Util (Solen)")
-    parser.add_commands([version, info, balance, transfer])
+    parser.add_commands([version, balance, transfer])
     parser.add_commands([init, run, confirm], namespace="bulk-transfer")
     parser.dispatch()
 

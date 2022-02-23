@@ -64,7 +64,8 @@ main_token = Fm9rHUTF5v3hwMLbStjZXqNBBoZyGriQaFM6sTFz3K8A
 
 [solana]
 default_env = dev
-keypair = ~/.config/solana/id.json
+dev_keypair = ~/.config/solana/id.json
+main_keypair = ~/.config/solana/id.json
 ```
 
 ## Usage ##
