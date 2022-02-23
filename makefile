@@ -34,3 +34,7 @@ build:
 publish:
 	make clean
 	twine upload dist/*
+
+html:
+	rm -rf docs/build
+	pushd docs; make html; popd

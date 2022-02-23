@@ -1,6 +1,6 @@
 import argh
 
-from solen import Solen
+from solen import TokenClient
 
 from .log_print import LogPrint
 
@@ -14,8 +14,8 @@ def init(csv, env="dev"):
     Create the required configuration for the bulk transfer run command
     """
     log_print.header("bulk transfer token init")
-    solen = Solen(env)
-    solen.bulk_transfer_token_init(csv)
+    token_client = TokenClient(env)
+    token_client.bulk_transfer_token_init(csv)
 
 
 @argh.arg("csv", help="A csv file with wallet,amount to be transfer")
@@ -26,8 +26,8 @@ def run(csv, dry_run=False, env=None):
     Transfer token to multiple addresses, based on the content of the given csv
     """
     log_print.header(f"bulk transfer token (dry-run={dry_run})")
-    solen = Solen(env)
-    solen.bulk_transfer_token(csv, dry_run=dry_run)
+    token_client = TokenClient(env)
+    token_client.bulk_transfer_token(csv, dry_run=dry_run)
 
 
 @argh.arg("csv", help="A csv file with wallet,amount to be transfer")
@@ -37,5 +37,5 @@ def confirm(csv, env="dev"):
     Confirm that transfer amount transaction signatures are finalized
     """
     log_print.header("bulk transfer confirm")
-    solen = Solen(env)
-    solen.bulk_confirm_transactions(csv)
+    token_client = TokenClient(env)
+    token_client.bulk_confirm_transactions(csv)

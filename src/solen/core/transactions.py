@@ -1,4 +1,5 @@
 import time
+import logging
 from enum import IntEnum
 
 from construct import Bytes, Int8ul
@@ -11,6 +12,8 @@ from solana.transaction import AccountMeta, Transaction, TransactionInstruction
 
 from .metadata import Metadata
 from .constants import METADATA_PROGRAM_ID
+
+logger = logging.getLogger(__name__)
 
 
 class InstructionType(IntEnum):
@@ -103,7 +106,7 @@ class Transactions:
                     self.await_confirmation(client, signatures, max_timeout, target, finalized)
                 return result
             except Exception as ex:
-                print(f"Failed attempt {attempt}: {ex}")
+                logger.error(f"Failed attempt {attempt}: {ex}")
                 continue
         raise ex  # pylint: disable=raising-bad-type
 
@@ -121,8 +124,8 @@ class Transactions:
                 continue
             if not finalized:
                 if confirmations >= target or is_finalized:
-                    print(f"Took {elapsed} seconds to confirm transaction")
+                    logger.info(f"Took {elapsed} seconds to confirm transaction")
                     return
             elif is_finalized:
-                print(f"Took {elapsed} seconds to confirm transaction")
+                logger.info(f"Took {elapsed} seconds to confirm transaction")
                 return
