@@ -78,9 +78,9 @@ class NFTClient:
         metadata = DotDict(self.metadata.unpack_metadata_account(metadata))
         if sort_creators_by_share:
             zipped = zip(
-                *sorted(zip(metadata.data.creators, metadata.data.share, metadata.data.verified), reverse=True)
+                *sorted(zip(metadata.data.share, metadata.data.verified, metadata.data.creators), reverse=True)
             )
-            metadata.data.creators, metadata.data.share, metadata.data.verified = zipped
+            metadata.data.creators, metadata.data.share, metadata.data.verified = [list(i) for i in zipped]
         return metadata
 
     def bulk_get_data(self, mint_key_list: List[str], sort_creators_by_share: bool = True) -> List[Dict]:
@@ -95,7 +95,8 @@ class NFTClient:
         >>> metadata = nft_client.nft.bulk_get_data(["DAysz5tmEMQBhXgcQHXrhQaF3rGwVw3LKoj5vMHY9vxM",
         >>>                                          "7Sde2VNGTcHv5wmgrYTvGW9h8Umiob5MdTq6Y7BuTw7h"])
         """
-        asyncit = Asyncit(save_output=True, save_as_json=True)
+        asyncit = Asyncit(save_output=True, save_as_json=True, pool_size=200,
+                          rate_limit=[{"period_sec": 5, "max_calls": 200}])
         for mint_key in mint_key_list:
             asyncit.run(self.get_data, mint_key, sort_creators_by_share)
         asyncit.wait()
@@ -258,6 +259,7 @@ class NFTClient:
         else:
             creators_addresses = creators_verified = creators_share = None
 
+        logger.info(f"going to update token {mint_address} values: {kwargs}")
         current_data = self.get_data(mint_address, sort_creators_by_share=False)
         data = dict(
             source_account=self.keypair,
@@ -283,6 +285,7 @@ class NFTClient:
             finalized=finalized,
         )
         transaction_signature = resp["result"]
+        logger.info(f"going to verify update transaction signature: {transaction_signature}")
         transaction_data = DotDict(self.get_transaction_data(transaction_signature))
         if transaction_data.status.Err:
             logger.error("\n".join(transaction_data.logMessages))
@@ -294,4 +297,5 @@ class NFTClient:
             err_message = token_metadata_errors.get(err_code) if err_code else ""
             logger.error(f"failed to update token data, {err_message}")
             return Err(transaction_signature)
+        logger.info("update been verified")
         return Ok(transaction_signature)
