@@ -42,3 +42,16 @@ def confirm(csv, env="dev"):
     log_print.header("bulk transfer confirm")
     token_client = TokenClient(env)
     token_client.bulk_confirm_transactions(csv)
+
+
+@argh.arg("csv", help="A csv file with wallet,amount to be transfer")
+@argh.arg("-e", "--env", help="Solana env (dev / main)")
+def status(csv, env="dev"):
+    """
+    Confirm that transfer amount transaction signatures are finalized
+    """
+    log_print.header("bulk transfer confirm")
+    token_client = TokenClient(env)
+    response = token_client.get_transfer_status(csv)
+    print(response)
+
