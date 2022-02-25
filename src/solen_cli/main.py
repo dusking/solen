@@ -7,7 +7,7 @@ import pkg_resources
 from solen import Context, NFTClient, SOLClient, TokenClient
 
 from .log_print import LogPrint
-from .bulk_transfer import run, init, confirm
+from .bulk_transfer import run, init, confirm, status
 
 log_print = LogPrint()
 
@@ -58,7 +58,7 @@ def transfer(wallet, amount, env=None):
 def main():
     parser = argh.ArghParser(description="Solana Token Util (Solen)")
     parser.add_commands([version, balance, transfer])
-    parser.add_commands([init, run, confirm], namespace="bulk-transfer")
+    parser.add_commands([init, run, confirm, status], namespace="bulk-transfer")
     parser.dispatch()
 
 

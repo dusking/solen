@@ -48,7 +48,8 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
         self.token_mint = token_mint or self.context.configured_token_mint
         self.clock_time = time.perf_counter
         self.run_start = self.clock_time()
-        self.config_folder = Path.home().joinpath(".config/solen")
+        self.config_folder = self.context.config_folder
+        self.transfers_data_folder = self.context.transfers_data_folder
         self.token = Token(self.client, PublicKey(self.token_mint), TOKEN_PROGRAM_ID, self.keypair)
         self.token_decimals = self.get_token_decimals()
 
@@ -179,21 +180,21 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
         token = self.token_mint
         decimals = self.token_decimals
         run_start = self.clock_time()
-        base_response = DotDict(dest=dest, amount=amount, confirmed=False)
+        response = DotDict(dest=dest, amount=amount, confirmed=False)
         amount_lamport = int(amount * pow(10, self.token_decimals))
         logger.info(f"going to transfer {amount} ({amount_lamport} lamport) from local wallet to {dest}")
         if dry_run:
-            return base_response.update(signature="test-run", ok=True, time=self.elapsed_time(run_start))
+            return response.update(signature="test-run", ok=True, time=self.elapsed_time(run_start))
         if not self.is_it_token_account(dest):
             dest_token_address = str(self.get_associated_address(dest))
             logger.info(f"recipient associated token account: {dest_token_address}")
             if not self.is_account_funded(dest_token_address):
                 logger.info(f"create & fund recipient associated token account: {dest_token_address}")
-                response = self.create_associated_token_account(dest)
-                if response.err:
+                create_associate_account_response = self.create_associated_token_account(dest)
+                if create_associate_account_response.err:
                     err_msg = "failed to transfer token (failed to create associated token account)"
                     logger.error(err_msg)
-                    return base_response.update(err=err_msg, ok=False, time=self.elapsed_time(run_start))
+                    return response.update(err=err_msg, ok=False, time=self.elapsed_time(run_start))
             dest = dest_token_address
         transaction = Transaction()
         try:
@@ -212,17 +213,17 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
                 )
             )
             options = TxOpts(skip_confirmation=skip_confirmation, preflight_commitment=commitment)
-            response = self.client.send_transaction(transaction, self.keypair, opts=options)
-            trn_sig = response["result"]
+            send_transaction_response = self.client.send_transaction(transaction, self.keypair, opts=options)
+            trn_sig = send_transaction_response["result"]
             logger.info(f"token been transferred, transaction signature: {trn_sig}")
-            return base_response.update(signature=trn_sig, ok=True, time=self.elapsed_time(run_start))
+            return response.update(signature=trn_sig, ok=True, time=self.elapsed_time(run_start))
         except RPCException as ex:
             message = dict(ex.args[0])["message"]
             logger.error(f"failed to transfer token. RPC error: {message}")
-            return base_response.update(err=f"{ex}", ok=False, time=self.elapsed_time(run_start))
+            return response.update(err=f"{ex}", ok=False, time=self.elapsed_time(run_start))
         except Exception as ex:
             logger.error(f"failed to transfer token. error: {ex}")
-            return base_response.update(err=f"{ex}", ok=False, time=self.elapsed_time(run_start))
+            return response.update(err=f"{ex}", ok=False, time=self.elapsed_time(run_start))
 
     def create_associated_token_account(self, owner: str) -> Response:
         """Create an associated token account
@@ -258,6 +259,16 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
                 )
         return in_process_init
 
+    def _get_in_process_json_path(self, transfer_csv_path: str) -> Path:
+        """Convert csv the path to the json config file path, in the solen config folder.
+
+        :param transfer_csv_path: Path to a csv file in the format of: wallet,amount.
+        """
+        csv_name = os.path.basename(transfer_csv_path)
+        csv_new_suffix = csv_name.replace(".csv", ".json")
+        csv_with_prefix = f"{self.context.env}_{csv_new_suffix}"
+        return self.transfers_data_folder.joinpath(csv_with_prefix)
+
     def bulk_transfer_token_init(self, transfer_csv_path: str):
         """Create the bulk transfer config based on given CSV file.
 
@@ -271,7 +282,7 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
         if not os.path.exists(transfer_csv_path):
             logger.error(f"missing file: {transfer_csv_path}")
             return
-        in_process_file = self.config_folder.joinpath(transfer_csv_path.replace(".csv", ".json"))
+        in_process_file = self._get_in_process_json_path(transfer_csv_path)
         if in_process_file.exists():
             in_process = json.loads(in_process_file.read_text(encoding="utf-8"))
             left_items = sum(not i["signature"] for i in in_process.values())
@@ -316,7 +327,7 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
         if not os.path.exists(transfer_csv_path):
             logger.error(f"missing file: {transfer_csv_path}")
             return
-        in_process_file = self.config_folder.joinpath(transfer_csv_path.replace(".csv", ".json"))
+        in_process_file = self._get_in_process_json_path(transfer_csv_path)
         if not in_process_file.exists():
             logger.error(
                 f"missing transfer config file: ({in_process_file}). run bulk-transfer init command to create it"
@@ -371,7 +382,7 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
         :param transfer_csv_path: Path to a csv file in the format of: wallet,amount.
         """
         run_start = self.clock_time()
-        in_process_file = self.config_folder.joinpath(transfer_csv_path.replace(".csv", ".json"))
+        in_process_file = self._get_in_process_json_path(transfer_csv_path)
         if not in_process_file.exists():
             logger.error(f"missing in-process file: ({in_process_file})")
             return
@@ -411,9 +422,9 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
         last_confirmation_amount = 0
         max_retries = 60
         confirmed = False
-        base_response = DotDict(signature=tx_sig, confirmed=confirmed)
+        response = DotDict(signature=tx_sig, confirmed=confirmed)
         if response_extra:
-            base_response.update(response_extra)
+            response.update(response_extra)
         while max_retries and time.time() < timeout:
             max_retries -= 1
             resp = self.client.get_signature_statuses([tx_sig], search_transaction_history=True)
@@ -438,4 +449,25 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
         else:
             maybe_rpc_error = resp.get("error")
             logger.error(f"Unable to confirm transaction {tx_sig}. {maybe_rpc_error}")
-        return base_response.update(confirmed=confirmed)
+        return response.update(confirmed=confirmed)
+
+    def get_transfer_status(self, transfer_csv_path: str):
+        """Get transfer status for a given transfer csv file.
+
+        :param transfer_csv_path: Path to a csv file to retrieve transfer data for.
+        """
+        in_process_file = self._get_in_process_json_path(transfer_csv_path)
+        response = DotDict(cav_path=transfer_csv_path, json_path=str(in_process_file))
+        if not in_process_file.exists():
+            logger.error(f"missing in-process file: ({in_process_file})")
+            return response.update(err="missing json file")
+        in_process = json.loads(in_process_file.read_text(encoding="utf-8"))
+        total_items = len(in_process)
+        left_items = sum(not i["finalized"] for i in in_process.values())
+        total_not_confirmed_to_transfer = sum(float(i["amount"]) for i in in_process.values() if not i["finalized"])
+        total_not_confirmed_to_transfer_str = f"{total_not_confirmed_to_transfer:,.4f}"
+        total_to_transfer = sum(float(i["amount"]) for i in in_process.values())
+        total_to_transfer_str = f"{total_to_transfer:,.4f}"
+        return response.update(total_items=total_items, left_items=left_items,
+                               total_to_transfer=total_to_transfer_str,
+                               left_unconfirmed_to_transfer=total_not_confirmed_to_transfer_str)

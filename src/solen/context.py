@@ -42,6 +42,7 @@ class Context:  # pylint: disable=too-many-instance-attributes
         self.clock_time = time.perf_counter
         self.run_start = self.clock_time()
         self.config_folder = Path.home().joinpath(".config/solen")
+        self.transfers_data_folder = self.config_folder.joinpath("transfers")
         self.config_file = self.config_folder.joinpath("config.ini")
         self.config = ConfigParser(str(self.config_file))
         self.config.load()
@@ -68,6 +69,7 @@ class Context:  # pylint: disable=too-many-instance-attributes
         self.configured_token_mint = self.config.addresses.get(f"{self.env}_token")
         if not self.configured_token_mint:
             logger.warning(f"missing {self.env} token in config file")
+        os.makedirs(self.transfers_data_folder, exist_ok=True)
 
     @property
     def my_address(self):
