@@ -84,12 +84,12 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
             return []
         tokens = json.loads(response.content)["tokens"]
         result = []
-        for token in tokens:
+        for token_info in tokens:
             if filter_key == "tags":
-                if str(filter_value.upper()) in [str(v.upper()) for v in token.get(filter_key, []) if v]:
-                    result.append(DotDict(token))
-            elif token.get(filter_key, None) == filter_value:
-                result.append(DotDict(token))
+                if str(filter_value.upper()) in [str(v.upper()) for v in token_info.get(filter_key, []) if v]:
+                    result.append(DotDict(token_info))
+            elif token_info.get(filter_key, None) == filter_value:
+                result.append(DotDict(token_info))
         return result
 
     def get_token_decimals(self, pubkey: Optional[Union[PublicKey, str]] = None) -> int:
@@ -179,7 +179,7 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
         token = self.token_mint
         decimals = self.token_decimals
         run_start = self.clock_time()
-        base_response = DotDict(dict(dest=dest, amount=amount, confirmed=False))
+        base_response = DotDict(dest=dest, amount=amount, confirmed=False)
         amount_lamport = int(amount * pow(10, self.token_decimals))
         logger.info(f"going to transfer {amount} ({amount_lamport} lamport) from local wallet to {dest}")
         if dry_run:
@@ -336,11 +336,11 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
                 f"[{i}] [{self._elapsed_time()}] handle transfer {counter}/{left_items}, current balance: "
                 f"{current_token_balance}"
             )
-            transfer_args = DotDict(dict(
+            transfer_args = DotDict(
                 dest=item["wallet"],
                 amount=float(item["amount"]),
                 dry_run=dry_run
-            ))
+            )
             if skip_confirm:
                 transfer_args.skip_confirmation = True
                 transfer_args.commitment = Processed
@@ -411,7 +411,7 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
         last_confirmation_amount = 0
         max_retries = 60
         confirmed = False
-        base_response = DotDict(dict(signature=tx_sig, confirmed=confirmed))
+        base_response = DotDict(signature=tx_sig, confirmed=confirmed)
         if response_extra:
             base_response.update(response_extra)
         while max_retries and time.time() < timeout:
