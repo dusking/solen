@@ -21,13 +21,16 @@ def init(csv, env="dev"):
 @argh.arg("csv", help="A csv file with wallet,amount to be transfer")
 @argh.arg("-e", "--env", help="Solana env (dev / main)")
 @argh.arg("-d", "--dry-run", action="store_true", help="Dry run - don't send transactions")
-def run(csv, dry_run=False, env=None):
+@argh.arg("-s", "--skip_confirm", default=False, action="store_true",
+          help="Run transaction without confirmations - to make it faster")
+def run(csv, dry_run=False, env=None, skip_confirm=False):
     """
     Transfer token to multiple addresses, based on the content of the given csv
     """
-    log_print.header(f"bulk transfer token (dry-run={dry_run})")
+    log_print.header(f"bulk transfer token (skip-confirmation: {skip_confirm}, dry-run={dry_run})")
     token_client = TokenClient(env)
-    token_client.bulk_transfer_token(csv, dry_run=dry_run)
+    log_print.info(f"running on {token_client.context.rpc_endpoint}")
+    token_client.bulk_transfer_token(csv, dry_run=dry_run, skip_confirm=skip_confirm)
 
 
 @argh.arg("csv", help="A csv file with wallet,amount to be transfer")

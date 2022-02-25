@@ -71,6 +71,7 @@ The bulk transfer consists the followings steps:
 
 The commands are idempotent. You can run them multiple times.
 Running the transfer commands multiple times will run failed transactions if there are any.
+The bulk-transfer skip-confirm option will make the run faster, but will may reduce the live status reliability.
 
 Sample flow:
 
@@ -79,6 +80,6 @@ Sample flow:
 
     solen bulk-transfer -h
     solen bulk-transfer init transfer-file-path.csv --env dev
-    solen bulk-transfer run transfer-file-path.csv --dry-run --env dev
-    solen bulk-transfer run transfer-file-path.csv --env dev
+    solen bulk-transfer run transfer-file-path.csv --env dev --dry-run
+    solen bulk-transfer run transfer-file-path.csv --env dev --skip-confirm
     solen bulk-transfer confirm transfer-file-path.csv --env dev

@@ -97,7 +97,6 @@ class Transactions:
     ):
         client = Client(api_endpoint)
         signers = list(map(Keypair, set(map(lambda s: s.seed, signers))))
-        ex = None
         for attempt in range(max_retries):
             try:
                 result = client.send_transaction(tx, *signers, opts=TxOpts(skip_preflight=True))
@@ -108,7 +107,7 @@ class Transactions:
             except Exception as ex:
                 logger.error(f"Failed attempt {attempt}: {ex}")
                 continue
-        raise ex  # pylint: disable=raising-bad-type
+        return
 
     def await_confirmation(self, client, signatures, max_timeout=60, target=20, finalized=True):
         elapsed = 0

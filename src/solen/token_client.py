@@ -10,6 +10,7 @@ from functools import partial
 
 import requests
 import spl.token.instructions as spl_token
+from asyncit import Asyncit
 from asyncit.dicts import DotDict
 from solana.rpc.core import RPCException, UnconfirmedTxError
 from solana.publickey import PublicKey
@@ -17,7 +18,7 @@ from solana.rpc.types import TxOpts
 from spl.token.client import Token
 from solana.transaction import Transaction
 from spl.token.constants import TOKEN_PROGRAM_ID
-from solana.rpc.commitment import COMMITMENT_RANKS, Confirmed, Finalized, Commitment
+from solana.rpc.commitment import COMMITMENT_RANKS, Confirmed, Finalized, Commitment, Processed
 from spl.token.instructions import TransferCheckedParams, transfer_checked
 
 from .context import Context
@@ -94,6 +95,8 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
     def get_token_decimals(self, pubkey: Optional[Union[PublicKey, str]] = None) -> int:
         """Returns the decimal config of an SPL Token type. (default is the configured token)
 
+        :param pubkey: The token mint address we want to get decimal info for (default is configured token).
+
         >>> from solen import TokenClient
         >>> token_client = TokenClient("dev")
         >>> token_client.get_token_decimals()
@@ -106,6 +109,8 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
 
     def balance(self, owner: Optional[Union[PublicKey, str]] = None) -> int:
         """Returns the token balance for the given wallet address. (default is keypair address)
+
+        :param owner: The address that need to query for token balance (default is configured keypair address).
 
         >>> from solen import TokenClient
         >>> token_client = TokenClient("dev")
@@ -127,28 +132,58 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
             logger.error(f"failed to retrieve balance.. error: {ex}")
             return 0
 
-    def get_associated_address(self, owner: str, token: str = None) -> PublicKey:
-        """Derives the associated token address for the given wallet address and token mint."""
+    def get_associated_address(self, owner: str, token: Optional[str] = None) -> PublicKey:
+        """Derives the associated token address for the given wallet address and token mint.
+
+        :param owner: The owner address that need to query for token associated address.
+        :param token: The token need to query for associated address in the given address (default: configured token).
+        """
         token = token or self.token_mint
         return spl_token.get_associated_token_address(PublicKey(owner), PublicKey(token))
 
     def is_it_token_account(self, address: str) -> bool:
+        """Returns true if the given address is a token associate account.
+
+        :param address: The address to query.
+        """
         info = self.client.get_account_info(address)
         return bool(info["result"]["value"] and str(info["result"]["value"]["owner"]) == str(TOKEN_PROGRAM_ID))
 
     def is_account_funded(self, address: str) -> bool:
+        """Return true id the given account exist and founded.
+
+        :param address: The address to query.
+        """
         response = self.client.get_account_info(address)
         return response["result"]["value"] is not None
 
-    def transfer_token(
-        self, dest: str, amount: float, token: str = None, decimals: int = None, dry_run: bool = False
-    ) -> Response:
-        """Generate an instruction that transfers lamports from one account to another."""
-        decimals = decimals or self.token_decimals
+    def elapsed_time(self, run_start):
+        elapsed_time = self.clock_time() - run_start
+        return str(timedelta(seconds=elapsed_time)).split(".", maxsplit=1)[0]
+
+    def transfer_token(self, dest: str, amount: float, dry_run: bool = False, skip_confirmation: bool = False,
+                       commitment: Commitment = Confirmed) -> Dict:
+        """Generate an instruction that transfers amount of configured token from one self account to another.
+
+        :param dest: recipient address.
+        :param amount: amountof token to transfer.
+        :param dry_run: if true the transfer will not be executed.
+        :param skip_confirmation: if true send transfer will not be coffirmed. It might be faster.
+        :param commitment: the commitment type for send transfer.
+
+        >>> from solen import TokenClient
+        >>> from solana.rpc.commitment import Processed
+        >>> token_client = TokenClient("dev")
+        >>> token_client.transfer_token("Cy4y1XGR9pj7vFikWVGrdQAPWCChqV9gQHCLht6eXBLW", 0.01, True, Processed)
+        """
+        token = self.token_mint
+        decimals = self.token_decimals
+        run_start = self.clock_time()
+        base_response = DotDict(dict(dest=dest, amount=amount, confirmed=False))
         amount_lamport = int(amount * pow(10, self.token_decimals))
         logger.info(f"going to transfer {amount} ({amount_lamport} lamport) from local wallet to {dest}")
         if dry_run:
-            return Ok("test-run")
+            return base_response.update(signature="test-run", ok=True, time=self.elapsed_time(run_start))
         if not self.is_it_token_account(dest):
             dest_token_address = str(self.get_associated_address(dest))
             logger.info(f"recipient associated token account: {dest_token_address}")
@@ -156,10 +191,10 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
                 logger.info(f"create & fund recipient associated token account: {dest_token_address}")
                 response = self.create_associated_token_account(dest)
                 if response.err:
-                    logger.error("failed to transfer token (failed to create associated token account)")
-                    return response
+                    err_msg = "failed to transfer token (failed to create associated token account)"
+                    logger.error(err_msg)
+                    return base_response.update(err=err_msg, ok=False, time=self.elapsed_time(run_start))
             dest = dest_token_address
-        token = token or self.token_mint
         transaction = Transaction()
         try:
             transaction.add(
@@ -176,21 +211,24 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
                     )
                 )
             )
-            options = TxOpts(skip_confirmation=False, preflight_commitment=Confirmed)
+            options = TxOpts(skip_confirmation=skip_confirmation, preflight_commitment=commitment)
             response = self.client.send_transaction(transaction, self.keypair, opts=options)
             trn_sig = response["result"]
             logger.info(f"token been transferred, transaction signature: {trn_sig}")
-            return Ok(trn_sig)
+            return base_response.update(signature=trn_sig, ok=True, time=self.elapsed_time(run_start))
         except RPCException as ex:
             message = dict(ex.args[0])["message"]
             logger.error(f"failed to transfer token. RPC error: {message}")
-            return Err(f"{ex}")
+            return base_response.update(err=f"{ex}", ok=False, time=self.elapsed_time(run_start))
         except Exception as ex:
             logger.error(f"failed to transfer token. error: {ex}")
-            return Err(f"{ex}")
+            return base_response.update(err=f"{ex}", ok=False, time=self.elapsed_time(run_start))
 
     def create_associated_token_account(self, owner: str) -> Response:
-        """Create an associated token account."""
+        """Create an associated token account
+
+        :param owner: The address that need to create a token associated address for.
+        """
         try:
             return Ok(str(self.token.create_associated_token_account(PublicKey(owner))))
         except RPCException as ex:
@@ -205,12 +243,14 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
             logger.error(f"failed to create associate token account. error: {ex}")
             return Err(f"failed to create associate token account for: {owner}")
 
-    def process_csv(self, csv_path: str) -> Dict:
+    def process_transfer_csv(self, transfer_csv_path: str) -> Dict:
         """Read the csv file and return dict of all the lines.
-        The keys are index since wallet may exist more than once.
+        The line index is the key and not the wallet since wallet may exist more than once.
+
+        :param transfer_csv_path: Path to a csv file in the format of: wallet,amount.
         """
         in_process_init = {}
-        with open_utf8(csv_path) as f:
+        with open_utf8(transfer_csv_path) as f:
             reader = csv.DictReader(f)
             for i, row in enumerate(reader):
                 in_process_init[i] = dict(
@@ -219,7 +259,10 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
         return in_process_init
 
     def bulk_transfer_token_init(self, transfer_csv_path: str):
-        """Create the bulk transfer config based on given CSV file."""
+        """Create the bulk transfer config based on given CSV file.
+
+        :param transfer_csv_path: Path to a csv file in the format of: wallet,amount.
+        """
         logger.info(f"going to create transfer config file based on file: {transfer_csv_path}")
         file_extension = os.path.splitext(transfer_csv_path)[1]
         if file_extension != ".csv":
@@ -239,19 +282,33 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
                 f"left records: {left_items}, left to transfer: {total_to_transfer_str}"
             )
             return
-        in_process_init = self.process_csv(transfer_csv_path)
+        in_process_init = self.process_transfer_csv(transfer_csv_path)
         in_process_file.write_text(json.dumps(in_process_init), encoding="utf-8")
         in_process = json.loads(in_process_file.read_text(encoding="utf-8"))
         total_to_transfer = sum(float(i["amount"]) for i in in_process.values())
-        total_to_transfer_str = f"{total_to_transfer:,}"
+        total_to_transfer_str = f"{total_to_transfer:,.4f}"
         logger.info(
             f"transfer config file been created: {in_process_file} "
             f"(total records: {len(in_process)}, total to transfer: {total_to_transfer_str})"
         )
 
-    def bulk_transfer_token(self, transfer_csv_path: str, dry_run=False):
-        """Transfer token to multiple addresses, based on the content of transfer_csv_path."""
+    def bulk_transfer_token(self, transfer_csv_path: str, dry_run=False, skip_confirm=False):
+        """Transfer token to multiple addresses, based on the content of transfer_csv_path.
+
+        :param transfer_csv_path: Path to a csv file in the format of: wallet,amount.
+        :param dry_run: When true the transactions will be skipped.
+        :param skip_confirm: When true transaction confirmation will be skipped. Run will be faster but less reliable.
+
+        >>> from solen import TokenClient
+        >>> token_client = TokenClient("main")
+        >>> token_client.bulk_transfer_token(csv_path)
+        when csv contain transfer data, for example:
+        wallet,amount
+        Cy4y1XGR9pj7vFikWVGrdQAPWCChqV9gQHCLht6eXBLW,0.001
+        Cy4y1XGR9pj7vFikWVGrdQAPWCChqV9gQHCLht6eXBLW,0.001
+        """
         logger.info(f"going to transfer tokens based on file: {transfer_csv_path}")
+        run_start = self.clock_time()
         file_extension = os.path.splitext(transfer_csv_path)[1]
         if file_extension != ".csv":
             logger.error(f"unsupported file type: {file_extension}. expecting csv")
@@ -279,29 +336,41 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
                 f"[{i}] [{self._elapsed_time()}] handle transfer {counter}/{left_items}, current balance: "
                 f"{current_token_balance}"
             )
-            response = self.transfer_token(item["wallet"], float(item["amount"]), dry_run=dry_run)
+            transfer_args = DotDict(dict(
+                dest=item["wallet"],
+                amount=float(item["amount"]),
+                dry_run=dry_run
+            ))
+            if skip_confirm:
+                transfer_args.skip_confirmation = True
+                transfer_args.commitment = Processed
+            response = self.transfer_token(**transfer_args)
             if dry_run:
                 continue
-            if response.err:
-                in_process[i].update({"error": response.err})
+            if not response.ok:
+                in_process[i].update({"error": response.err, "time": response.time})
                 if "Node is behind by" in response.err:
                     # When this error occurs (like "RPC error: Node is behind by 169 slots")
                     # it'll take at least a sec to start working again. keep trying will keep failing
                     time.sleep(1)
             else:
-                in_process[i].update({"signature": response.ok, "error": ""})
+                in_process[i].update({"signature": response.signature, "error": "", "time": response.time})
             in_process_file.write_text(json.dumps(in_process), encoding="utf-8")
         total_transferred = sum(float(i["amount"]) for i in in_process.values() if i["signature"])
         total_not_transferred = sum(float(i["amount"]) for i in in_process.values() if not i["signature"])
-        total_transferred_str = f"{total_transferred:,}"
-        total_not_transferred_str = f"{total_not_transferred:,}"
+        total_transferred_str = f"{total_transferred:,.4f}"
+        total_not_transferred_str = f"{total_not_transferred:,.4f}"
         logger.info(
-            f"Done. total transferred: {total_transferred_str}, total not transferred: {total_not_transferred_str} "
-            f"(unverified)"
+            f"Done after {self.elapsed_time(run_start)}. total transferred: {total_transferred_str}, "
+            f"total not transferred: {total_not_transferred_str} (unverified)"
         )
 
     def bulk_confirm_transactions(self, transfer_csv_path: str):
-        """Verify that transfer amount transaction signatures are finalized."""
+        """Verify that transfer amount transaction signatures are finalized.
+
+        :param transfer_csv_path: Path to a csv file in the format of: wallet,amount.
+        """
+        run_start = self.clock_time()
         in_process_file = self.config_folder.joinpath(transfer_csv_path.replace(".csv", ".json"))
         if not in_process_file.exists():
             logger.error(f"missing in-process file: ({in_process_file})")
@@ -310,29 +379,41 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
         total_items = len(in_process)
         left_items = sum(not i["finalized"] for i in in_process.values())
         logger.info(f"going to handle {left_items} left not verified, out of {total_items} records")
+
+        asyncit = Asyncit(save_output=True, save_as_json=True, pool_size=200,
+                          rate_limit=[{"period_sec": 5, "max_calls": 200}])
         for i, item in in_process.items():
             if not item.get("signature"):
                 continue
             if item.get("finalized"):
                 continue
-            item = self.confirm_transaction(item["signature"])
-            in_process[i].update({"finalized": item})
-            in_process_file.write_text(json.dumps(in_process), encoding="utf-8")
+            asyncit.run(self.confirm_transaction, item["signature"], response_extra={"index": str(i)})
+        asyncit.wait()
+        confirm_result = asyncit.get_output()
+        for result in confirm_result:
+            in_process[result["index"]]["finalized"] = result["confirmed"]
+        in_process_file.write_text(json.dumps(in_process), encoding="utf-8")
         total_finalized = sum(i["finalized"] for i in in_process.values())
-        logger.info(f"Done. total finalized: {total_finalized} / {len(in_process)}")
+        logger.info(f"Done after {self.elapsed_time(run_start)}. total finalized: {total_finalized} / {len(in_process)}")
 
-    def confirm_transaction(self, tx_sig: str, commitment: Commitment = Finalized, sleep_seconds: float = 1.0) -> bool:
+    def confirm_transaction(self, tx_sig: str, commitment: Commitment = Finalized, sleep_seconds: float = 1.0,
+                            response_extra: Optional[Dict] = None, timeout: Optional[int] = 30) -> Dict:
         """Confirm the transaction identified by the specified signature.
 
-        :param tx_sig: the transaction signature to confirm.
+        :param tx_sig: The transaction signature to confirm.
         :param commitment: Bank state to query. It can be either "finalized", "confirmed" or "processed".
         :param sleep_seconds: The number of seconds to sleep when polling the signature status.
+        :param response_extra: Extra data for response, in dict format (will be added as key: value in response)
+        :param timeout: Timeout in seconds to wait for confirmation
         """
-        timeout = time.time() + 30
+        timeout = time.time() + timeout
         resp = {}
         last_confirmation_amount = 0
         max_retries = 60
         confirmed = False
+        base_response = DotDict(dict(signature=tx_sig, confirmed=confirmed))
+        if response_extra:
+            base_response.update(response_extra)
         while max_retries and time.time() < timeout:
             max_retries -= 1
             resp = self.client.get_signature_statuses([tx_sig], search_transaction_history=True)
@@ -346,15 +427,15 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
                 confirmation_rank = COMMITMENT_RANKS[confirmation_status]
                 commitment_rank = COMMITMENT_RANKS[commitment]
                 if confirmation_rank >= commitment_rank:
-                    logger.info(f"transaction confirmed rank: {confirmation_rank}")
+                    logger.debug(f"transaction {tx_sig} confirmed (rank: {confirmation_rank})")
                     confirmed = True
                     break
                 confirmation_amount = resp_value["confirmations"]
                 if last_confirmation_amount != confirmation_amount:
-                    logger.info(f"transaction confirmed by {confirmation_amount} validators")
+                    logger.info(f"transaction {tx_sig} confirmed by {confirmation_amount} validators")
                     last_confirmation_amount = confirmation_amount
             time.sleep(sleep_seconds)
         else:
             maybe_rpc_error = resp.get("error")
             logger.error(f"Unable to confirm transaction {tx_sig}. {maybe_rpc_error}")
-        return confirmed
+        return base_response.update(confirmed=confirmed)

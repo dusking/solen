@@ -182,12 +182,15 @@ class NFTClient:
         signatures_data = response["result"]
         return [DotDict(add_time_to_data(d)) for d in signatures_data]
 
-    def get_transaction_data(self, signatures: str):
+    def get_transaction_data(self, signatures: str) -> Dict:
         """get transaction data.
 
         :param signatures: transaction signatures.
         """
         transaction = self.client.get_transaction(signatures)
+        if not transaction["result"]:
+            logger.error(f"failed to get transaction data for {signatures}")
+            return {}
         return DotDict(transaction["result"]["meta"])
 
     def _parse_token_value(self, value: Dict) -> Dict:
@@ -223,7 +226,7 @@ class NFTClient:
         return [self._parse_token_value(v) for v in response["result"]["value"]]
 
     def update_token_metadata(
-        self, mint_address, max_retries=3, skip_confirmation=False, max_timeout=60, target=20, finalized=True, **kwargs
+        self, mint_address, max_retries=1, skip_confirmation=False, max_timeout=60, target=20, finalized=True, **kwargs
     ) -> Response:
         """Updates the metadata for a given NFT.
 
@@ -284,9 +287,16 @@ class NFTClient:
             target=target,
             finalized=finalized,
         )
+        if not resp:
+            logger.error("failed to execute transaction")
+            return Err("failed to execute transaction")
         transaction_signature = resp["result"]
+        if skip_confirmation:
+            return Ok(transaction_signature)
         logger.info(f"going to verify update transaction signature: {transaction_signature}")
         transaction_data = DotDict(self.get_transaction_data(transaction_signature))
+        if not transaction_data:
+            return Err(transaction_signature)
         if transaction_data.status.Err:
             logger.error("\n".join(transaction_data.logMessages))
             err_code = None
