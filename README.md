@@ -12,6 +12,8 @@ Features:
 
 Suggestions and PRs welcome!
 
+[Latest Documentation](https://dusking.github.io/solen/).
+
 **Note: This is experimental software for a young ecosystem. 
 Use at your own risk. The author is not responsible for misuse of the software or for the user failing 
 to test specific commands on devnet before using on production.**
