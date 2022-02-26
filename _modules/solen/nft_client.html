@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>solen.nft_client &mdash; solen 0.0.2 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> solen
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../index.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../solen.html">Solen Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cli.html">CLI</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">solen</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+      <li>solen.nft_client</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for solen.nft_client</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">base64</span>
+<span class="kn">import</span> <span class="nn">struct</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span>
+
+<span class="kn">import</span> <span class="nn">base58</span>
+<span class="kn">from</span> <span class="nn">asyncit</span> <span class="kn">import</span> <span class="n">Asyncit</span>
+<span class="kn">from</span> <span class="nn">asyncit.dicts</span> <span class="kn">import</span> <span class="n">DotDict</span>
+<span class="kn">from</span> <span class="nn">solana.publickey</span> <span class="kn">import</span> <span class="n">PublicKey</span>
+<span class="kn">from</span> <span class="nn">solana.rpc.types</span> <span class="kn">import</span> <span class="n">TokenAccountOpts</span>
+<span class="kn">from</span> <span class="nn">spl.token._layouts</span> <span class="kn">import</span> <span class="n">MINT_LAYOUT</span><span class="p">,</span> <span class="n">ACCOUNT_LAYOUT</span>
+<span class="kn">from</span> <span class="nn">spl.token.constants</span> <span class="kn">import</span> <span class="n">TOKEN_PROGRAM_ID</span>
+<span class="kn">from</span> <span class="nn">solana.rpc.commitment</span> <span class="kn">import</span> <span class="n">COMMITMENT_RANKS</span><span class="p">,</span> <span class="n">Confirmed</span><span class="p">,</span> <span class="n">Finalized</span><span class="p">,</span> <span class="n">Commitment</span>
+
+<span class="kn">from</span> <span class="nn">.context</span> <span class="kn">import</span> <span class="n">Context</span>
+<span class="kn">from</span> <span class="nn">.response</span> <span class="kn">import</span> <span class="n">Ok</span><span class="p">,</span> <span class="n">Err</span><span class="p">,</span> <span class="n">Response</span>
+<span class="kn">from</span> <span class="nn">.core.errors</span> <span class="kn">import</span> <span class="n">token_metadata_errors</span>
+<span class="kn">from</span> <span class="nn">.core.metadata</span> <span class="kn">import</span> <span class="n">Metadata</span>
+<span class="kn">from</span> <span class="nn">.core.transactions</span> <span class="kn">import</span> <span class="n">Transactions</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="NFTClient"><a class="viewcode-back" href="../../solen.html#solen.nft_client.NFTClient">[docs]</a><span class="k">class</span> <span class="nc">NFTClient</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;NFT Client class.</span>
+
+<span class="sd">    :param env: The Solana env (options are based on the config file)</span>
+
+<span class="sd">    The Solana RPC endpoint is taken from the config file - based on the given env parameter.</span>
+<span class="sd">    For example, using the :ref:`config file &lt;index:config file&gt;` in the example and &quot;dev&quot; parameter,</span>
+<span class="sd">    the RPC endpoint will be:`https://api.devnet.solana.com`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">Context</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Init NFT Client.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">context</span> <span class="o">=</span> <span class="n">context</span> <span class="ow">or</span> <span class="n">Context</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">client</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">client</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">keypair</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">keypair</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rpc_endpoint</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">rpc_endpoint</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span> <span class="o">=</span> <span class="n">Metadata</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transaction</span> <span class="o">=</span> <span class="n">Transactions</span><span class="p">()</span>
+
+<div class="viewcode-block" id="NFTClient.get_data"><a class="viewcode-back" href="../../solen.html#solen.nft_client.NFTClient.get_data">[docs]</a>    <span class="k">def</span> <span class="nf">get_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mint_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">sort_creators_by_share</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Get the NFT On-Chain data. The creators data returned sorted by share.</span>
+
+<span class="sd">         :param mint_key: The NFT mint address.</span>
+<span class="sd">         :param sort_creators_by_share: If true the creators, verified and share lists will be sorted correspondingly</span>
+<span class="sd">             by the share amount - the highest first (default: true).</span>
+
+<span class="sd">        &gt;&gt;&gt; from solen import NFTClient</span>
+<span class="sd">        &gt;&gt;&gt; nft_client = NFTClient(&quot;main&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; metadata = nft_client.get_data(&quot;DAysz5tmEMQBhXgcQHXrhQaF3rGwVw3LKoj5vMHY9vxM&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; print(json.dumps(metadata, indent=4))  # doctest: +SKIP</span>
+<span class="sd">        {&quot;update_authority&quot;: &quot;AuoD4FKLSDKpuNm7y1G5RX3jBdrXerHfaVjfP415miET&quot;,</span>
+<span class="sd">         &quot;mint&quot;: &quot;DAysz5tmEMQBhXgcQHXrhQaF3rGwVw3LKoj5vMHY9vxM&quot;,</span>
+<span class="sd">         &quot;data&quot;: {</span>
+<span class="sd">             &quot;name&quot;: &quot;Monkey #3882&quot;,</span>
+<span class="sd">             &quot;symbol&quot;: &quot;ML&quot;,</span>
+<span class="sd">             &quot;uri&quot;: &quot;https://arweave.net/q54T5RnKno8h8W_PtVL9xUQXh6tPZw4eTAxphS1Og38&quot;,</span>
+<span class="sd">             &quot;seller_fee_basis_points&quot;: 450,</span>
+<span class="sd">             &quot;creators&quot;: [</span>
+<span class="sd">                 &quot;BAjb6D4n8LGrzGpncShKFxkD8dpGKM3KoZ6yrmSrai8k&quot;,</span>
+<span class="sd">                 &quot;AuoD4FKLSDKpuNm7y1G5RX3jBdrXerHfaVjfP415miET&quot;,</span>
+<span class="sd">                 &quot;3xiSExYoVT63E8bMQpF4FAYfXSGU9CMm5E5zBz1cDKGb&quot;</span>
+<span class="sd">             ],</span>
+<span class="sd">             &quot;verified&quot;: [0, 0, 1],</span>
+<span class="sd">             &quot;share&quot;: [100, 0, 0]</span>
+<span class="sd">         },</span>
+<span class="sd">         &quot;primary_sale_happened&quot;: true,</span>
+<span class="sd">         &quot;is_mutable&quot;: true}</span>
+<span class="sd">        &gt;&gt;&gt; print(metadata.data.name) # doctest: +SKIP</span>
+<span class="sd">        Monkey #3882</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">metadata_account</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">get_metadata_account</span><span class="p">(</span><span class="n">mint_key</span><span class="p">)</span>
+        <span class="n">metadata</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_account_info</span><span class="p">(</span><span class="n">metadata_account</span><span class="p">)[</span><span class="s2">&quot;result&quot;</span><span class="p">][</span><span class="s2">&quot;value&quot;</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">metadata</span> <span class="o">=</span> <span class="n">DotDict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">unpack_metadata_account</span><span class="p">(</span><span class="n">metadata</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">sort_creators_by_share</span><span class="p">:</span>
+            <span class="n">zipped</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span>
+                <span class="o">*</span><span class="nb">sorted</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">metadata</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">share</span><span class="p">,</span> <span class="n">metadata</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">verified</span><span class="p">,</span> <span class="n">metadata</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">creators</span><span class="p">),</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">metadata</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">creators</span><span class="p">,</span> <span class="n">metadata</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">share</span><span class="p">,</span> <span class="n">metadata</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">verified</span> <span class="o">=</span> <span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">zipped</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">metadata</span></div>
+
+<div class="viewcode-block" id="NFTClient.bulk_get_data"><a class="viewcode-back" href="../../solen.html#solen.nft_client.NFTClient.bulk_get_data">[docs]</a>    <span class="k">def</span> <span class="nf">bulk_get_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mint_key_list</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">sort_creators_by_share</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;Bulk call to get_data function, to get the NFT On-Chain data of nfts in the input list.</span>
+
+<span class="sd">        :param mint_key_list: mint address list to query</span>
+<span class="sd">        :param sort_creators_by_share: If true the creators, verified and share lists will be sorted correspondingly</span>
+<span class="sd">            by the share amount - the highest first (default: true).</span>
+
+<span class="sd">        &gt;&gt;&gt; from solen import NFTClient</span>
+<span class="sd">        &gt;&gt;&gt; nft_client = NFTClient(&quot;main&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; metadata = nft_client.nft.bulk_get_data([&quot;DAysz5tmEMQBhXgcQHXrhQaF3rGwVw3LKoj5vMHY9vxM&quot;,</span>
+<span class="sd">        &gt;&gt;&gt;                                          &quot;7Sde2VNGTcHv5wmgrYTvGW9h8Umiob5MdTq6Y7BuTw7h&quot;])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">asyncit</span> <span class="o">=</span> <span class="n">Asyncit</span><span class="p">(</span><span class="n">save_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">save_as_json</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">pool_size</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+                          <span class="n">rate_limit</span><span class="o">=</span><span class="p">[{</span><span class="s2">&quot;period_sec&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span> <span class="s2">&quot;max_calls&quot;</span><span class="p">:</span> <span class="mi">200</span><span class="p">}])</span>
+        <span class="k">for</span> <span class="n">mint_key</span> <span class="ow">in</span> <span class="n">mint_key_list</span><span class="p">:</span>
+            <span class="n">asyncit</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_data</span><span class="p">,</span> <span class="n">mint_key</span><span class="p">,</span> <span class="n">sort_creators_by_share</span><span class="p">)</span>
+        <span class="n">asyncit</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">asyncit</span><span class="o">.</span><span class="n">get_output</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="NFTClient.get_historical_holders_associate_accounts"><a class="viewcode-back" href="../../solen.html#solen.nft_client.NFTClient.get_historical_holders_associate_accounts">[docs]</a>    <span class="k">def</span> <span class="nf">get_historical_holders_associate_accounts</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mint_address</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;get all historical holders accounts for a given NFT.</span>
+<span class="sd">        The function returna the associated accounts and not the owners accounts.</span>
+<span class="sd">        To get the owners need to use get_historical_holders_owners.</span>
+
+<span class="sd">        :param mint_address: mint address to query.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">largest_accounts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_token_largest_accounts</span><span class="p">(</span><span class="n">PublicKey</span><span class="p">(</span><span class="n">mint_address</span><span class="p">))</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">i</span><span class="p">[</span><span class="s2">&quot;address&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">largest_accounts</span><span class="p">[</span><span class="s2">&quot;result&quot;</span><span class="p">][</span><span class="s2">&quot;value&quot;</span><span class="p">]]</span></div>
+
+<div class="viewcode-block" id="NFTClient.get_owner_of_associate_account"><a class="viewcode-back" href="../../solen.html#solen.nft_client.NFTClient.get_owner_of_associate_account">[docs]</a>    <span class="k">def</span> <span class="nf">get_owner_of_associate_account</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">associated_address</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;get the owner of a given associated account.</span>
+
+<span class="sd">        :param associated_address: associated address to query.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">largest_account_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_account_info</span><span class="p">(</span><span class="n">PublicKey</span><span class="p">(</span><span class="n">associated_address</span><span class="p">))</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">ACCOUNT_LAYOUT</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">largest_account_info</span><span class="p">[</span><span class="s2">&quot;result&quot;</span><span class="p">][</span><span class="s2">&quot;value&quot;</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">]))</span>
+        <span class="k">return</span> <span class="n">base58</span><span class="o">.</span><span class="n">b58encode</span><span class="p">(</span><span class="nb">bytes</span><span class="p">(</span><span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="s2">&quot;&lt;&quot;</span> <span class="o">+</span> <span class="s2">&quot;B&quot;</span> <span class="o">*</span> <span class="mi">32</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">owner</span><span class="p">)))</span></div>
+
+<div class="viewcode-block" id="NFTClient.get_holders"><a class="viewcode-back" href="../../solen.html#solen.nft_client.NFTClient.get_holders">[docs]</a>    <span class="k">def</span> <span class="nf">get_holders</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mint_address</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;get all historical holders owners for a given NFT.</span>
+
+<span class="sd">        :param mint_address: mint address to query.</span>
+
+<span class="sd">        &gt;&gt;&gt; from solen import NFTClient</span>
+<span class="sd">        &gt;&gt;&gt; nft_client = NFTClient(&quot;main&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; nft_client.get_holders(&quot;7Sde2VNGTcHv5wmgrYTvGW9h8Umiob5MdTq6Y7BuTw7h&quot;)</span>
+<span class="sd">            [&#39;FPqcXeEAt3WtRD8QcSVRcX9WD1zuM5xxvJQhfE9XJbLF&#39;,</span>
+<span class="sd">            &#39;AuoD4FKLSDKpuNm7y1G5RX3jBdrXerHfaVjfP415miET&#39;]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">largest_accounts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_historical_holders_associate_accounts</span><span class="p">(</span><span class="n">mint_address</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">get_owner_of_associate_account</span><span class="p">(</span><span class="n">a</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">largest_accounts</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="NFTClient.get_current_holder"><a class="viewcode-back" href="../../solen.html#solen.nft_client.NFTClient.get_current_holder">[docs]</a>    <span class="k">def</span> <span class="nf">get_current_holder</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mint_address</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;get current holder owners for a given NFT.</span>
+
+<span class="sd">        :param mint_address: mint address to query.</span>
+
+<span class="sd">        &gt;&gt;&gt; from solen import NFTClient</span>
+<span class="sd">        &gt;&gt;&gt; nft_client = NFTClient(&quot;main&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; nft_client.get_current_holder(&quot;7Sde2VNGTcHv5wmgrYTvGW9h8Umiob5MdTq6Y7BuTw7h&quot;)</span>
+<span class="sd">            &#39;FPqcXeEAt3WtRD8QcSVRcX9WD1zuM5xxvJQhfE9XJbLF&#39;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">largest_accounts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_historical_holders_associate_accounts</span><span class="p">(</span><span class="n">mint_address</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_owner_of_associate_account</span><span class="p">(</span><span class="n">largest_accounts</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="NFTClient.get_transactions"><a class="viewcode-back" href="../../solen.html#solen.nft_client.NFTClient.get_transactions">[docs]</a>    <span class="k">def</span> <span class="nf">get_transactions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mint_address</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;get historical transactions for a given NFT.</span>
+
+<span class="sd">        :param mint_address: mint address to query.</span>
+
+<span class="sd">        &gt;&gt;&gt; from solen import NFTClient</span>
+<span class="sd">        &gt;&gt;&gt; nft_client = NFTClient(&quot;main&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; transactions = nft_client.get_transactions(&quot;9DAhGeEUYboU4EvGNvgPajZ6Acd9UfDX9aB5zGv6oTJj&quot;)</span>
+<span class="sd">        [{&#39;blockTime&#39;: 1641486108,</span>
+<span class="sd">          &#39;confirmationStatus&#39;: &#39;finalized&#39;,</span>
+<span class="sd">          &#39;err&#39;: None,</span>
+<span class="sd">          &#39;memo&#39;: None,</span>
+<span class="sd">          &#39;signature&#39;: &#39;3H2SvadvjjwwWoCjmhC68sqVVJK79oXkzokfPMscNvX5RYatzVPceLSzTEztujSXZPf5FSySaYVe4oigkyNG88e2&#39;,</span>
+<span class="sd">          &#39;slot&#39;: 115072701,</span>
+<span class="sd">          &#39;time&#39;: datetime.datetime(2022, 1, 6, 18, 21, 48)},...]</span>
+<span class="sd">        &gt;&gt;&gt; transactions[0].signature</span>
+<span class="sd">            &#39;3H2SvadvjjwwWoCjmhC68sqVVJK79oXkzokfPMscNvX5RYatzVPceLSzTEztujSXZPf5FSySaYVe4oigkyNG88e2&#39;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">def</span> <span class="nf">add_time_to_data</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
+            <span class="n">timestamp</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;blockTime&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">timestamp</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">data</span>
+            <span class="n">data</span><span class="p">[</span><span class="s2">&quot;datetime&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">fromtimestamp</span><span class="p">(</span><span class="n">timestamp</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">data</span>
+
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_confirmed_signature_for_address2</span><span class="p">(</span><span class="n">PublicKey</span><span class="p">(</span><span class="n">mint_address</span><span class="p">))</span>
+        <span class="n">err</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;error&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">err</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;failed to get transactions, err code: </span><span class="si">{</span><span class="n">err</span><span class="p">[</span><span class="s1">&#39;code&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, message: </span><span class="si">{</span><span class="n">err</span><span class="p">[</span><span class="s1">&#39;message&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[]</span>
+        <span class="n">signatures_data</span> <span class="o">=</span> <span class="n">response</span><span class="p">[</span><span class="s2">&quot;result&quot;</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">DotDict</span><span class="p">(</span><span class="n">add_time_to_data</span><span class="p">(</span><span class="n">d</span><span class="p">))</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">signatures_data</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="NFTClient.get_transaction_data"><a class="viewcode-back" href="../../solen.html#solen.nft_client.NFTClient.get_transaction_data">[docs]</a>    <span class="k">def</span> <span class="nf">get_transaction_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">signatures</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;get transaction data.</span>
+
+<span class="sd">        :param signatures: transaction signatures.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">transaction</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_transaction</span><span class="p">(</span><span class="n">signatures</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">transaction</span><span class="p">[</span><span class="s2">&quot;result&quot;</span><span class="p">]:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;failed to get transaction data for </span><span class="si">{</span><span class="n">signatures</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">{}</span>
+        <span class="k">return</span> <span class="n">DotDict</span><span class="p">(</span><span class="n">transaction</span><span class="p">[</span><span class="s2">&quot;result&quot;</span><span class="p">][</span><span class="s2">&quot;meta&quot;</span><span class="p">])</span></div>
+
+    <span class="k">def</span> <span class="nf">_parse_token_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Parse extract meaningful dict data from the extended token account data.&quot;&quot;&quot;</span>
+        <span class="n">associate_account_pubkey</span> <span class="o">=</span> <span class="n">value</span><span class="p">[</span><span class="s2">&quot;pubkey&quot;</span><span class="p">]</span>
+        <span class="n">sol_balance</span> <span class="o">=</span> <span class="n">value</span><span class="p">[</span><span class="s2">&quot;account&quot;</span><span class="p">][</span><span class="s2">&quot;lamports&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="nb">pow</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">9</span><span class="p">)</span>
+        <span class="n">info</span> <span class="o">=</span> <span class="n">value</span><span class="p">[</span><span class="s2">&quot;account&quot;</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="s2">&quot;parsed&quot;</span><span class="p">][</span><span class="s2">&quot;info&quot;</span><span class="p">]</span>
+        <span class="n">token_address</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="s2">&quot;mint&quot;</span><span class="p">]</span>
+        <span class="n">update_authority</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="s2">&quot;owner&quot;</span><span class="p">]</span>
+        <span class="n">amount</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;tokenAmount&quot;</span><span class="p">][</span><span class="s2">&quot;uiAmountString&quot;</span><span class="p">])</span>
+        <span class="n">hold_by_owner</span> <span class="o">=</span> <span class="n">amount</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="k">return</span> <span class="n">DotDict</span><span class="p">(</span>
+            <span class="nb">dict</span><span class="p">(</span>
+                <span class="n">account</span><span class="o">=</span><span class="n">associate_account_pubkey</span><span class="p">,</span>
+                <span class="n">sol_balance</span><span class="o">=</span><span class="n">sol_balance</span><span class="p">,</span>
+                <span class="n">token</span><span class="o">=</span><span class="n">token_address</span><span class="p">,</span>
+                <span class="n">token_balance</span><span class="o">=</span><span class="n">amount</span><span class="p">,</span>
+                <span class="n">hold_by_owner</span><span class="o">=</span><span class="n">hold_by_owner</span><span class="p">,</span>
+                <span class="n">update_authority</span><span class="o">=</span><span class="n">update_authority</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="NFTClient.get_all_nft_accounts_by_owner"><a class="viewcode-back" href="../../solen.html#solen.nft_client.NFTClient.get_all_nft_accounts_by_owner">[docs]</a>    <span class="k">def</span> <span class="nf">get_all_nft_accounts_by_owner</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">owner</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">PublicKey</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Get all NFT accounts owned by the given owner.</span>
+
+<span class="sd">        :param owner: The owner address to query for NFTs.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">owner</span> <span class="o">=</span> <span class="n">owner</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">keypair</span><span class="o">.</span><span class="n">public_key</span>
+        <span class="n">commitment</span><span class="p">:</span> <span class="n">Commitment</span> <span class="o">=</span> <span class="n">Finalized</span>
+        <span class="n">encoding</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;jsonParsed&quot;</span>
+        <span class="n">opt</span> <span class="o">=</span> <span class="n">TokenAccountOpts</span><span class="p">(</span><span class="n">program_id</span><span class="o">=</span><span class="n">TOKEN_PROGRAM_ID</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="n">encoding</span><span class="p">)</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_token_accounts_by_owner</span><span class="p">(</span><span class="n">PublicKey</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">owner</span><span class="p">)),</span> <span class="n">opt</span><span class="p">,</span> <span class="n">commitment</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_parse_token_value</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">response</span><span class="p">[</span><span class="s2">&quot;result&quot;</span><span class="p">][</span><span class="s2">&quot;value&quot;</span><span class="p">]]</span></div>
+
+<div class="viewcode-block" id="NFTClient.update_token_metadata"><a class="viewcode-back" href="../../solen.html#solen.nft_client.NFTClient.update_token_metadata">[docs]</a>    <span class="k">def</span> <span class="nf">update_token_metadata</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">mint_address</span><span class="p">,</span> <span class="n">max_retries</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">skip_confirmation</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">max_timeout</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">finalized</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Updates the metadata for a given NFT.</span>
+
+<span class="sd">        :param mint_address: The NFT mint address.</span>
+<span class="sd">        :param kwargs: The data that need to be changed. Options are: uri, name, symbol, fee, creators</span>
+
+<span class="sd">        * uri : str</span>
+<span class="sd">        * name : str</span>
+<span class="sd">        * symbol : str</span>
+<span class="sd">        * fee : int (precentage as int. instead of 4.5% it should be 450)</span>
+<span class="sd">        * creators : list of dicts. each dict must contain:</span>
+
+<span class="sd">            * address : str - the creator address</span>
+<span class="sd">            * verified : int - 0 or 1</span>
+<span class="sd">            * share : int - between 0 and 100 (for royalty share between creators)</span>
+
+<span class="sd">        &gt;&gt;&gt; from solen import NFTClient</span>
+<span class="sd">        &gt;&gt;&gt; nft_client = NFTClient(&quot;dev&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; response = nft_client.update_token_metadata(&quot;CF4wMo1YnK44BL8R8ZpEUpY4iskWX5KAHbRXMUvpqnJL&quot;,</span>
+<span class="sd">        &gt;&gt;&gt;                                             name=&quot;Monkey 6001&quot;)</span>
+
+<span class="sd">        In case os an error, the signature will be in response.err,</span>
+<span class="sd">        In case os succefull update, the signature will be in response.ok.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">new_creators</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;creators&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">new_creators</span><span class="p">:</span>
+            <span class="n">creators_addresses</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span><span class="p">[</span><span class="s2">&quot;address&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">new_creators</span><span class="p">]</span>
+            <span class="n">creators_verified</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span><span class="p">[</span><span class="s2">&quot;verified&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">new_creators</span><span class="p">]</span>
+            <span class="n">creators_share</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span><span class="p">[</span><span class="s2">&quot;share&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">new_creators</span><span class="p">]</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">creators_addresses</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">creators_verified</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">creators_share</span><span class="p">):</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;update token failed, bad creators data: </span><span class="si">{</span><span class="n">new_creators</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">Err</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">creators_addresses</span> <span class="o">=</span> <span class="n">creators_verified</span> <span class="o">=</span> <span class="n">creators_share</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;going to update token </span><span class="si">{</span><span class="n">mint_address</span><span class="si">}</span><span class="s2"> values: </span><span class="si">{</span><span class="n">kwargs</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">current_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_data</span><span class="p">(</span><span class="n">mint_address</span><span class="p">,</span> <span class="n">sort_creators_by_share</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+            <span class="n">source_account</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">keypair</span><span class="p">,</span>
+            <span class="n">mint_address</span><span class="o">=</span><span class="n">PublicKey</span><span class="p">(</span><span class="n">mint_address</span><span class="p">),</span>
+            <span class="n">link</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;uri&quot;</span><span class="p">,</span> <span class="n">current_data</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">uri</span><span class="p">),</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="n">current_data</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">name</span><span class="p">),</span>
+            <span class="n">symbol</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;symbol&quot;</span><span class="p">,</span> <span class="n">current_data</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">symbol</span><span class="p">),</span>
+            <span class="n">fee</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;fee&quot;</span><span class="p">,</span> <span class="n">current_data</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">seller_fee_basis_points</span><span class="p">),</span>
+            <span class="n">creators_addresses</span><span class="o">=</span><span class="n">creators_addresses</span> <span class="ow">or</span> <span class="nb">list</span><span class="p">(</span><span class="n">current_data</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">creators</span><span class="p">),</span>
+            <span class="n">creators_verified</span><span class="o">=</span><span class="n">creators_verified</span> <span class="ow">or</span> <span class="nb">list</span><span class="p">(</span><span class="n">current_data</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">verified</span><span class="p">),</span>
+            <span class="n">creators_share</span><span class="o">=</span><span class="n">creators_share</span> <span class="ow">or</span> <span class="nb">list</span><span class="p">(</span><span class="n">current_data</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">share</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="c1"># return data</span>
+        <span class="n">tx</span><span class="p">,</span> <span class="n">signers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transaction</span><span class="o">.</span><span class="n">create_update_token_metadata_tx</span><span class="p">(</span><span class="o">**</span><span class="n">data</span><span class="p">)</span>
+        <span class="n">resp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transaction</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rpc_endpoint</span><span class="p">,</span>
+            <span class="n">tx</span><span class="p">,</span>
+            <span class="n">signers</span><span class="p">,</span>
+            <span class="n">max_retries</span><span class="o">=</span><span class="n">max_retries</span><span class="p">,</span>
+            <span class="n">skip_confirmation</span><span class="o">=</span><span class="n">skip_confirmation</span><span class="p">,</span>
+            <span class="n">max_timeout</span><span class="o">=</span><span class="n">max_timeout</span><span class="p">,</span>
+            <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span>
+            <span class="n">finalized</span><span class="o">=</span><span class="n">finalized</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">resp</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;failed to execute transaction&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">Err</span><span class="p">(</span><span class="s2">&quot;failed to execute transaction&quot;</span><span class="p">)</span>
+        <span class="n">transaction_signature</span> <span class="o">=</span> <span class="n">resp</span><span class="p">[</span><span class="s2">&quot;result&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">skip_confirmation</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">Ok</span><span class="p">(</span><span class="n">transaction_signature</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;going to verify update transaction signature: </span><span class="si">{</span><span class="n">transaction_signature</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">transaction_data</span> <span class="o">=</span> <span class="n">DotDict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_transaction_data</span><span class="p">(</span><span class="n">transaction_signature</span><span class="p">))</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">transaction_data</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">Err</span><span class="p">(</span><span class="n">transaction_signature</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">transaction_data</span><span class="o">.</span><span class="n">status</span><span class="o">.</span><span class="n">Err</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">transaction_data</span><span class="o">.</span><span class="n">logMessages</span><span class="p">))</span>
+            <span class="n">err_code</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">transaction_data</span><span class="o">.</span><span class="n">logMessages</span><span class="p">:</span>
+                <span class="k">if</span> <span class="s2">&quot;custom program error:&quot;</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+                    <span class="n">err_code</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                    <span class="n">err_code</span> <span class="o">=</span> <span class="n">err_code</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;x&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">err_message</span> <span class="o">=</span> <span class="n">token_metadata_errors</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">err_code</span><span class="p">)</span> <span class="k">if</span> <span class="n">err_code</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;failed to update token data, </span><span class="si">{</span><span class="n">err_message</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">Err</span><span class="p">(</span><span class="n">transaction_signature</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;update been verified&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Ok</span><span class="p">(</span><span class="n">transaction_signature</span><span class="p">)</span></div></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Omer Duskin.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Solen Library &mdash; solen 0.0.2 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="CLI" href="cli.html" />
+    <link rel="prev" title="Introduction" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> solen
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="index.html">Introduction</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Solen Library</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#module-solen.context">Context Object</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#nft-client">NFT Client</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#token-client">Token Client</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-solen.sol_client">SOL Client</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">CLI</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">solen</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Solen Library</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/solen.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="solen-library">
+<h1>Solen Library<a class="headerlink" href="#solen-library" title="Permalink to this headline"></a></h1>
+<section id="module-solen.context">
+<span id="context-object"></span><h2>Context Object<a class="headerlink" href="#module-solen.context" title="Permalink to this headline"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="solen.context.Context">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">solen.context.</span></span><span class="sig-name descname"><span class="pre">Context</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/solen/context.html#Context"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.context.Context" title="Permalink to this definition"></a></dt>
+<dd><p>Context class.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>env</strong> – The Solana env (options are based on the config file)</p>
+</dd>
+</dl>
+<p>The Solana RPC endpoint is taken from the config file - based on the given env parameter.
+For example, using the <a class="reference internal" href="index.html#config-file"><span class="std std-ref">config file</span></a>: in the example and “dev” parameter,
+the RPC endpoint will be:<cite>https://api.devnet.solana.com</cite></p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">solen</span> <span class="kn">import</span> <span class="n">Context</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">context</span> <span class="o">=</span> <span class="n">Context</span><span class="p">(</span><span class="s2">&quot;dev&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="solen.context.Context.init">
+<span class="sig-name descname"><span class="pre">init</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/solen/context.html#Context.init"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.context.Context.init" title="Permalink to this definition"></a></dt>
+<dd><p>Init Solen instance based on env parameter.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="nft-client">
+<span id="id1"></span><h2>NFT Client<a class="headerlink" href="#nft-client" title="Permalink to this headline"></a></h2>
+<span class="target" id="module-solen.nft_client"></span><dl class="py class">
+<dt class="sig sig-object py" id="solen.nft_client.NFTClient">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">solen.nft_client.</span></span><span class="sig-name descname"><span class="pre">NFTClient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">context</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#solen.context.Context" title="solen.context.Context"><span class="pre">solen.context.Context</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/solen/nft_client.html#NFTClient"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.nft_client.NFTClient" title="Permalink to this definition"></a></dt>
+<dd><p>NFT Client class.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>env</strong> – The Solana env (options are based on the config file)</p>
+</dd>
+</dl>
+<p>The Solana RPC endpoint is taken from the config file - based on the given env parameter.
+For example, using the <a class="reference internal" href="index.html#config-file"><span class="std std-ref">config file</span></a> in the example and “dev” parameter,
+the RPC endpoint will be:<cite>https://api.devnet.solana.com</cite></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="solen.nft_client.NFTClient.bulk_get_data">
+<span class="sig-name descname"><span class="pre">bulk_get_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mint_key_list</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sort_creators_by_share</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/solen/nft_client.html#NFTClient.bulk_get_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.nft_client.NFTClient.bulk_get_data" title="Permalink to this definition"></a></dt>
+<dd><p>Bulk call to get_data function, to get the NFT On-Chain data of nfts in the input list.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mint_key_list</strong> – mint address list to query</p></li>
+<li><p><strong>sort_creators_by_share</strong> – If true the creators, verified and share lists will be sorted correspondingly
+by the share amount - the highest first (default: true).</p></li>
+</ul>
+</dd>
+</dl>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">solen</span> <span class="kn">import</span> <span class="n">NFTClient</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">nft_client</span> <span class="o">=</span> <span class="n">NFTClient</span><span class="p">(</span><span class="s2">&quot;main&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">metadata</span> <span class="o">=</span> <span class="n">nft_client</span><span class="o">.</span><span class="n">nft</span><span class="o">.</span><span class="n">bulk_get_data</span><span class="p">([</span><span class="s2">&quot;DAysz5tmEMQBhXgcQHXrhQaF3rGwVw3LKoj5vMHY9vxM&quot;</span><span class="p">,</span>
+<span class="gp">&gt;&gt;&gt; </span>                                         <span class="s2">&quot;7Sde2VNGTcHv5wmgrYTvGW9h8Umiob5MdTq6Y7BuTw7h&quot;</span><span class="p">])</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="solen.nft_client.NFTClient.get_all_nft_accounts_by_owner">
+<span class="sig-name descname"><span class="pre">get_all_nft_accounts_by_owner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">owner</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">solana.publickey.PublicKey</span><span class="p"><span class="pre">,</span> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span></span></span><a class="reference internal" href="_modules/solen/nft_client.html#NFTClient.get_all_nft_accounts_by_owner"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.nft_client.NFTClient.get_all_nft_accounts_by_owner" title="Permalink to this definition"></a></dt>
+<dd><p>Get all NFT accounts owned by the given owner.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>owner</strong> – The owner address to query for NFTs.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="solen.nft_client.NFTClient.get_current_holder">
+<span class="sig-name descname"><span class="pre">get_current_holder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mint_address</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/solen/nft_client.html#NFTClient.get_current_holder"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.nft_client.NFTClient.get_current_holder" title="Permalink to this definition"></a></dt>
+<dd><p>get current holder owners for a given NFT.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>mint_address</strong> – mint address to query.</p>
+</dd>
+</dl>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">solen</span> <span class="kn">import</span> <span class="n">NFTClient</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">nft_client</span> <span class="o">=</span> <span class="n">NFTClient</span><span class="p">(</span><span class="s2">&quot;main&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">nft_client</span><span class="o">.</span><span class="n">get_current_holder</span><span class="p">(</span><span class="s2">&quot;7Sde2VNGTcHv5wmgrYTvGW9h8Umiob5MdTq6Y7BuTw7h&quot;</span><span class="p">)</span>
+<span class="go">    &#39;FPqcXeEAt3WtRD8QcSVRcX9WD1zuM5xxvJQhfE9XJbLF&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="solen.nft_client.NFTClient.get_data">
+<span class="sig-name descname"><span class="pre">get_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mint_key</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sort_creators_by_share</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span></span></span><a class="reference internal" href="_modules/solen/nft_client.html#NFTClient.get_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.nft_client.NFTClient.get_data" title="Permalink to this definition"></a></dt>
+<dd><p>Get the NFT On-Chain data. The creators data returned sorted by share.</p>
+<blockquote>
+<div><dl class="field-list simple">
+<dt class="field-odd">param mint_key</dt>
+<dd class="field-odd"><p>The NFT mint address.</p>
+</dd>
+<dt class="field-even">param sort_creators_by_share</dt>
+<dd class="field-even"><p>If true the creators, verified and share lists will be sorted correspondingly
+by the share amount - the highest first (default: true).</p>
+</dd>
+</dl>
+</div></blockquote>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">solen</span> <span class="kn">import</span> <span class="n">NFTClient</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">nft_client</span> <span class="o">=</span> <span class="n">NFTClient</span><span class="p">(</span><span class="s2">&quot;main&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">metadata</span> <span class="o">=</span> <span class="n">nft_client</span><span class="o">.</span><span class="n">get_data</span><span class="p">(</span><span class="s2">&quot;DAysz5tmEMQBhXgcQHXrhQaF3rGwVw3LKoj5vMHY9vxM&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">metadata</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">))</span>  
+<span class="go">{&quot;update_authority&quot;: &quot;AuoD4FKLSDKpuNm7y1G5RX3jBdrXerHfaVjfP415miET&quot;,</span>
+<span class="go"> &quot;mint&quot;: &quot;DAysz5tmEMQBhXgcQHXrhQaF3rGwVw3LKoj5vMHY9vxM&quot;,</span>
+<span class="go"> &quot;data&quot;: {</span>
+<span class="go">     &quot;name&quot;: &quot;Monkey #3882&quot;,</span>
+<span class="go">     &quot;symbol&quot;: &quot;ML&quot;,</span>
+<span class="go">     &quot;uri&quot;: &quot;https://arweave.net/q54T5RnKno8h8W_PtVL9xUQXh6tPZw4eTAxphS1Og38&quot;,</span>
+<span class="go">     &quot;seller_fee_basis_points&quot;: 450,</span>
+<span class="go">     &quot;creators&quot;: [</span>
+<span class="go">         &quot;BAjb6D4n8LGrzGpncShKFxkD8dpGKM3KoZ6yrmSrai8k&quot;,</span>
+<span class="go">         &quot;AuoD4FKLSDKpuNm7y1G5RX3jBdrXerHfaVjfP415miET&quot;,</span>
+<span class="go">         &quot;3xiSExYoVT63E8bMQpF4FAYfXSGU9CMm5E5zBz1cDKGb&quot;</span>
+<span class="go">     ],</span>
+<span class="go">     &quot;verified&quot;: [0, 0, 1],</span>
+<span class="go">     &quot;share&quot;: [100, 0, 0]</span>
+<span class="go"> },</span>
+<span class="go"> &quot;primary_sale_happened&quot;: true,</span>
+<span class="go"> &quot;is_mutable&quot;: true}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">metadata</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">name</span><span class="p">)</span> 
+<span class="go">Monkey #3882</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="solen.nft_client.NFTClient.get_historical_holders_associate_accounts">
+<span class="sig-name descname"><span class="pre">get_historical_holders_associate_accounts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mint_address</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/solen/nft_client.html#NFTClient.get_historical_holders_associate_accounts"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.nft_client.NFTClient.get_historical_holders_associate_accounts" title="Permalink to this definition"></a></dt>
+<dd><p>get all historical holders accounts for a given NFT.
+The function returna the associated accounts and not the owners accounts.
+To get the owners need to use get_historical_holders_owners.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>mint_address</strong> – mint address to query.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="solen.nft_client.NFTClient.get_holders">
+<span class="sig-name descname"><span class="pre">get_holders</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mint_address</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/solen/nft_client.html#NFTClient.get_holders"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.nft_client.NFTClient.get_holders" title="Permalink to this definition"></a></dt>
+<dd><p>get all historical holders owners for a given NFT.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>mint_address</strong> – mint address to query.</p>
+</dd>
+</dl>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">solen</span> <span class="kn">import</span> <span class="n">NFTClient</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">nft_client</span> <span class="o">=</span> <span class="n">NFTClient</span><span class="p">(</span><span class="s2">&quot;main&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">nft_client</span><span class="o">.</span><span class="n">get_holders</span><span class="p">(</span><span class="s2">&quot;7Sde2VNGTcHv5wmgrYTvGW9h8Umiob5MdTq6Y7BuTw7h&quot;</span><span class="p">)</span>
+<span class="go">    [&#39;FPqcXeEAt3WtRD8QcSVRcX9WD1zuM5xxvJQhfE9XJbLF&#39;,</span>
+<span class="go">    &#39;AuoD4FKLSDKpuNm7y1G5RX3jBdrXerHfaVjfP415miET&#39;]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="solen.nft_client.NFTClient.get_owner_of_associate_account">
+<span class="sig-name descname"><span class="pre">get_owner_of_associate_account</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">associated_address</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/solen/nft_client.html#NFTClient.get_owner_of_associate_account"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.nft_client.NFTClient.get_owner_of_associate_account" title="Permalink to this definition"></a></dt>
+<dd><p>get the owner of a given associated account.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>associated_address</strong> – associated address to query.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="solen.nft_client.NFTClient.get_transaction_data">
+<span class="sig-name descname"><span class="pre">get_transaction_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signatures</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span></span></span><a class="reference internal" href="_modules/solen/nft_client.html#NFTClient.get_transaction_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.nft_client.NFTClient.get_transaction_data" title="Permalink to this definition"></a></dt>
+<dd><p>get transaction data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>signatures</strong> – transaction signatures.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="solen.nft_client.NFTClient.get_transactions">
+<span class="sig-name descname"><span class="pre">get_transactions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mint_address</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/solen/nft_client.html#NFTClient.get_transactions"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.nft_client.NFTClient.get_transactions" title="Permalink to this definition"></a></dt>
+<dd><p>get historical transactions for a given NFT.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>mint_address</strong> – mint address to query.</p>
+</dd>
+</dl>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">solen</span> <span class="kn">import</span> <span class="n">NFTClient</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">nft_client</span> <span class="o">=</span> <span class="n">NFTClient</span><span class="p">(</span><span class="s2">&quot;main&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">transactions</span> <span class="o">=</span> <span class="n">nft_client</span><span class="o">.</span><span class="n">get_transactions</span><span class="p">(</span><span class="s2">&quot;9DAhGeEUYboU4EvGNvgPajZ6Acd9UfDX9aB5zGv6oTJj&quot;</span><span class="p">)</span>
+<span class="go">[{&#39;blockTime&#39;: 1641486108,</span>
+<span class="go">  &#39;confirmationStatus&#39;: &#39;finalized&#39;,</span>
+<span class="go">  &#39;err&#39;: None,</span>
+<span class="go">  &#39;memo&#39;: None,</span>
+<span class="go">  &#39;signature&#39;: &#39;3H2SvadvjjwwWoCjmhC68sqVVJK79oXkzokfPMscNvX5RYatzVPceLSzTEztujSXZPf5FSySaYVe4oigkyNG88e2&#39;,</span>
+<span class="go">  &#39;slot&#39;: 115072701,</span>
+<span class="go">  &#39;time&#39;: datetime.datetime(2022, 1, 6, 18, 21, 48)},...]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">transactions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">signature</span>
+<span class="go">    &#39;3H2SvadvjjwwWoCjmhC68sqVVJK79oXkzokfPMscNvX5RYatzVPceLSzTEztujSXZPf5FSySaYVe4oigkyNG88e2&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="solen.nft_client.NFTClient.update_token_metadata">
+<span class="sig-name descname"><span class="pre">update_token_metadata</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mint_address</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_retries</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip_confirmation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">60</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">finalized</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">solen.response.Response</span></span></span><a class="reference internal" href="_modules/solen/nft_client.html#NFTClient.update_token_metadata"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.nft_client.NFTClient.update_token_metadata" title="Permalink to this definition"></a></dt>
+<dd><p>Updates the metadata for a given NFT.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mint_address</strong> – The NFT mint address.</p></li>
+<li><p><strong>kwargs</strong> – The data that need to be changed. Options are: uri, name, symbol, fee, creators</p></li>
+</ul>
+</dd>
+</dl>
+<ul>
+<li><p>uri : str</p></li>
+<li><p>name : str</p></li>
+<li><p>symbol : str</p></li>
+<li><p>fee : int (precentage as int. instead of 4.5% it should be 450)</p></li>
+<li><p>creators : list of dicts. each dict must contain:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>address : str - the creator address</p></li>
+<li><p>verified : int - 0 or 1</p></li>
+<li><p>share : int - between 0 and 100 (for royalty share between creators)</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">solen</span> <span class="kn">import</span> <span class="n">NFTClient</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">nft_client</span> <span class="o">=</span> <span class="n">NFTClient</span><span class="p">(</span><span class="s2">&quot;dev&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">response</span> <span class="o">=</span> <span class="n">nft_client</span><span class="o">.</span><span class="n">update_token_metadata</span><span class="p">(</span><span class="s2">&quot;CF4wMo1YnK44BL8R8ZpEUpY4iskWX5KAHbRXMUvpqnJL&quot;</span><span class="p">,</span>
+<span class="gp">&gt;&gt;&gt; </span>                                            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Monkey 6001&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In case os an error, the signature will be in response.err,
+In case os succefull update, the signature will be in response.ok.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="token-client">
+<span id="id2"></span><h2>Token Client<a class="headerlink" href="#token-client" title="Permalink to this headline"></a></h2>
+<span class="target" id="module-solen.token_client"></span><dl class="py class">
+<dt class="sig sig-object py" id="solen.token_client.TokenClient">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">solen.token_client.</span></span><span class="sig-name descname"><span class="pre">TokenClient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">token_mint</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">context</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#solen.context.Context" title="solen.context.Context"><span class="pre">solen.context.Context</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/solen/token_client.html#TokenClient"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.token_client.TokenClient" title="Permalink to this definition"></a></dt>
+<dd><p>Token Client class.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>env</strong> – The Solana env (options are based on the config file)</p></li>
+<li><p><strong>token_mint</strong> – The token mint address, token commands will be based on that token.
+(default taken from the config file)</p></li>
+</ul>
+</dd>
+</dl>
+<p>The Solana RPC endpoint is taken from the config file - based on the given env parameter.
+For example, using the <a class="reference internal" href="index.html#config-file"><span class="std std-ref">config file</span></a>: in the example and “dev” parameter,
+the RPC endpoint will be: <cite>https://api.devnet.solana.com</cite></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="solen.token_client.TokenClient.balance">
+<span class="sig-name descname"><span class="pre">balance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">owner</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">solana.publickey.PublicKey</span><span class="p"><span class="pre">,</span> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="_modules/solen/token_client.html#TokenClient.balance"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.token_client.TokenClient.balance" title="Permalink to this definition"></a></dt>
+<dd><p>Returns the token balance for the given wallet address. (default is keypair address)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>owner</strong> – The address that need to query for token balance (default is configured keypair address).</p>
+</dd>
+</dl>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">solen</span> <span class="kn">import</span> <span class="n">TokenClient</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">token_client</span> <span class="o">=</span> <span class="n">TokenClient</span><span class="p">(</span><span class="s2">&quot;dev&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">token_client</span><span class="o">.</span><span class="n">balance</span><span class="p">()</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="solen.token_client.TokenClient.bulk_confirm_transactions">
+<span class="sig-name descname"><span class="pre">bulk_confirm_transactions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">transfer_csv_path</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/solen/token_client.html#TokenClient.bulk_confirm_transactions"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.token_client.TokenClient.bulk_confirm_transactions" title="Permalink to this definition"></a></dt>
+<dd><p>Verify that transfer amount transaction signatures are finalized.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>transfer_csv_path</strong> – Path to a csv file in the format of: wallet,amount.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="solen.token_client.TokenClient.bulk_transfer_token">
+<span class="sig-name descname"><span class="pre">bulk_transfer_token</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">transfer_csv_path</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dry_run</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip_confirm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/solen/token_client.html#TokenClient.bulk_transfer_token"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.token_client.TokenClient.bulk_transfer_token" title="Permalink to this definition"></a></dt>
+<dd><p>Transfer token to multiple addresses, based on the content of transfer_csv_path.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>transfer_csv_path</strong> – Path to a csv file in the format of: wallet,amount.</p></li>
+<li><p><strong>dry_run</strong> – When true the transactions will be skipped.</p></li>
+<li><p><strong>skip_confirm</strong> – When true transaction confirmation will be skipped. Run will be faster but less reliable.</p></li>
+</ul>
+</dd>
+</dl>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">solen</span> <span class="kn">import</span> <span class="n">TokenClient</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">token_client</span> <span class="o">=</span> <span class="n">TokenClient</span><span class="p">(</span><span class="s2">&quot;main&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">token_client</span><span class="o">.</span><span class="n">bulk_transfer_token</span><span class="p">(</span><span class="n">csv_path</span><span class="p">)</span>
+<span class="go">when csv contain transfer data, for example:</span>
+<span class="go">wallet,amount</span>
+<span class="go">Cy4y1XGR9pj7vFikWVGrdQAPWCChqV9gQHCLht6eXBLW,0.001</span>
+<span class="go">Cy4y1XGR9pj7vFikWVGrdQAPWCChqV9gQHCLht6eXBLW,0.001</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="solen.token_client.TokenClient.bulk_transfer_token_init">
+<span class="sig-name descname"><span class="pre">bulk_transfer_token_init</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">transfer_csv_path</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/solen/token_client.html#TokenClient.bulk_transfer_token_init"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.token_client.TokenClient.bulk_transfer_token_init" title="Permalink to this definition"></a></dt>
+<dd><p>Create the bulk transfer config based on given CSV file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>transfer_csv_path</strong> – Path to a csv file in the format of: wallet,amount.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="solen.token_client.TokenClient.confirm_transaction">
+<span class="sig-name descname"><span class="pre">confirm_transaction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tx_sig</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">commitment</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Commitment</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'finalized'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sleep_seconds</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">response_extra</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">30</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span></span></span><a class="reference internal" href="_modules/solen/token_client.html#TokenClient.confirm_transaction"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.token_client.TokenClient.confirm_transaction" title="Permalink to this definition"></a></dt>
+<dd><p>Confirm the transaction identified by the specified signature.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tx_sig</strong> – The transaction signature to confirm.</p></li>
+<li><p><strong>commitment</strong> – Bank state to query. It can be either “finalized”, “confirmed” or “processed”.</p></li>
+<li><p><strong>sleep_seconds</strong> – The number of seconds to sleep when polling the signature status.</p></li>
+<li><p><strong>response_extra</strong> – Extra data for response, in dict format (will be added as key: value in response)</p></li>
+<li><p><strong>timeout</strong> – Timeout in seconds to wait for confirmation</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="solen.token_client.TokenClient.create_associated_token_account">
+<span class="sig-name descname"><span class="pre">create_associated_token_account</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">owner</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">solen.response.Response</span></span></span><a class="reference internal" href="_modules/solen/token_client.html#TokenClient.create_associated_token_account"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.token_client.TokenClient.create_associated_token_account" title="Permalink to this definition"></a></dt>
+<dd><p>Create an associated token account</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>owner</strong> – The address that need to create a token associated address for.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="solen.token_client.TokenClient.get_associated_address">
+<span class="sig-name descname"><span class="pre">get_associated_address</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">owner</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">token</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">solana.publickey.PublicKey</span></span></span><a class="reference internal" href="_modules/solen/token_client.html#TokenClient.get_associated_address"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.token_client.TokenClient.get_associated_address" title="Permalink to this definition"></a></dt>
+<dd><p>Derives the associated token address for the given wallet address and token mint.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>owner</strong> – The owner address that need to query for token associated address.</p></li>
+<li><p><strong>token</strong> – The token need to query for associated address in the given address (default: configured token).</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="solen.token_client.TokenClient.get_registered_info">
+<span class="sig-name descname"><span class="pre">get_registered_info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/solen/token_client.html#TokenClient.get_registered_info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.token_client.TokenClient.get_registered_info" title="Permalink to this definition"></a></dt>
+<dd><p>return Solana registered token info.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>kwargs</strong> – filter param - can get only one filter option from the following:
+[address, symbol, name, tags] (Default is address of configured token).</p>
+</dd>
+</dl>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">solen</span> <span class="kn">import</span> <span class="n">TokenClient</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">token_client</span> <span class="o">=</span> <span class="n">TokenClient</span><span class="p">(</span><span class="s2">&quot;main&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">token_client</span><span class="o">.</span><span class="n">get_registered_info</span><span class="p">(</span><span class="n">symbol</span><span class="o">=</span><span class="s2">&quot;TINY&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="solen.token_client.TokenClient.get_token_decimals">
+<span class="sig-name descname"><span class="pre">get_token_decimals</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pubkey</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">solana.publickey.PublicKey</span><span class="p"><span class="pre">,</span> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="_modules/solen/token_client.html#TokenClient.get_token_decimals"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.token_client.TokenClient.get_token_decimals" title="Permalink to this definition"></a></dt>
+<dd><p>Returns the decimal config of an SPL Token type. (default is the configured token)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>pubkey</strong> – The token mint address we want to get decimal info for (default is configured token).</p>
+</dd>
+</dl>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">solen</span> <span class="kn">import</span> <span class="n">TokenClient</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">token_client</span> <span class="o">=</span> <span class="n">TokenClient</span><span class="p">(</span><span class="s2">&quot;dev&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">token_client</span><span class="o">.</span><span class="n">get_token_decimals</span><span class="p">()</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="solen.token_client.TokenClient.is_account_funded">
+<span class="sig-name descname"><span class="pre">is_account_funded</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">address</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="_modules/solen/token_client.html#TokenClient.is_account_funded"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.token_client.TokenClient.is_account_funded" title="Permalink to this definition"></a></dt>
+<dd><p>Return true id the given account exist and founded.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>address</strong> – The address to query.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="solen.token_client.TokenClient.is_it_token_account">
+<span class="sig-name descname"><span class="pre">is_it_token_account</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">address</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="_modules/solen/token_client.html#TokenClient.is_it_token_account"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.token_client.TokenClient.is_it_token_account" title="Permalink to this definition"></a></dt>
+<dd><p>Returns true if the given address is a token associate account.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>address</strong> – The address to query.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="solen.token_client.TokenClient.process_transfer_csv">
+<span class="sig-name descname"><span class="pre">process_transfer_csv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">transfer_csv_path</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span></span></span><a class="reference internal" href="_modules/solen/token_client.html#TokenClient.process_transfer_csv"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.token_client.TokenClient.process_transfer_csv" title="Permalink to this definition"></a></dt>
+<dd><p>Read the csv file and return dict of all the lines.
+The line index is the key and not the wallet since wallet may exist more than once.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>transfer_csv_path</strong> – Path to a csv file in the format of: wallet,amount.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="solen.token_client.TokenClient.transfer_token">
+<span class="sig-name descname"><span class="pre">transfer_token</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dest</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">amount</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dry_run</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip_confirmation</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">commitment</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Commitment</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'confirmed'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span></span></span><a class="reference internal" href="_modules/solen/token_client.html#TokenClient.transfer_token"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.token_client.TokenClient.transfer_token" title="Permalink to this definition"></a></dt>
+<dd><p>Generate an instruction that transfers amount of configured token from one self account to another.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dest</strong> – recipient address.</p></li>
+<li><p><strong>amount</strong> – amountof token to transfer.</p></li>
+<li><p><strong>dry_run</strong> – if true the transfer will not be executed.</p></li>
+<li><p><strong>skip_confirmation</strong> – if true send transfer will not be coffirmed. It might be faster.</p></li>
+<li><p><strong>commitment</strong> – the commitment type for send transfer.</p></li>
+</ul>
+</dd>
+</dl>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">solen</span> <span class="kn">import</span> <span class="n">TokenClient</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">solana.rpc.commitment</span> <span class="kn">import</span> <span class="n">Processed</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">token_client</span> <span class="o">=</span> <span class="n">TokenClient</span><span class="p">(</span><span class="s2">&quot;dev&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">token_client</span><span class="o">.</span><span class="n">transfer_token</span><span class="p">(</span><span class="s2">&quot;Cy4y1XGR9pj7vFikWVGrdQAPWCChqV9gQHCLht6eXBLW&quot;</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="n">Processed</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-solen.sol_client">
+<span id="sol-client"></span><h2>SOL Client<a class="headerlink" href="#module-solen.sol_client" title="Permalink to this headline"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="solen.sol_client.SOLClient">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">solen.sol_client.</span></span><span class="sig-name descname"><span class="pre">SOLClient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">context</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#solen.context.Context" title="solen.context.Context"><span class="pre">solen.context.Context</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/solen/sol_client.html#SOLClient"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.sol_client.SOLClient" title="Permalink to this definition"></a></dt>
+<dd><p>SOL client class.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>env</strong> – The Solana env (options are based on the config file)</p>
+</dd>
+</dl>
+<p>The Solana RPC endpoint is taken from the config file - based on the given env parameter.
+For example, using the <a class="reference internal" href="index.html#config-file"><span class="std std-ref">config file</span></a>: in the example and “dev” parameter,
+the RPC endpoint will be: <cite>https://api.devnet.solana.com</cite></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="solen.sol_client.SOLClient.balance">
+<span class="sig-name descname"><span class="pre">balance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">owner</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="_modules/solen/sol_client.html#SOLClient.balance"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.sol_client.SOLClient.balance" title="Permalink to this definition"></a></dt>
+<dd><p>Returns the SOL amount for the given wallet address</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">solen</span> <span class="kn">import</span> <span class="n">SOLClient</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sol_client</span> <span class="o">=</span> <span class="n">SOLClient</span><span class="p">(</span><span class="s2">&quot;main&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sol_client</span><span class="o">.</span><span class="n">balance</span><span class="p">()</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Introduction" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="cli.html" class="btn btn-neutral float-right" title="CLI" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Omer Duskin.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

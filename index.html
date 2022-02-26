@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Introduction &mdash; solen 0.0.2 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Solen Library" href="solen.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="#" class="icon icon-home"> solen
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="solen.html">Solen Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">CLI</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">solen</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home"></a> &raquo;</li>
+      <li>Introduction</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="introduction">
+<h1>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline"></a></h1>
+<a class="reference external image-reference" href="https://pypi.org/project/solen/"><img alt="PyPI version" src="https://img.shields.io/pypi/v/solen?color=blue" /></a>
+<a class="reference external image-reference" href="https://github.com/dusking/solen/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/License-MIT-yellow.svg" /></a>
+<p>Solen is both CLI and a python library aim to handle the RPC commands for a Solana based Token.
+It handle Solana based token instructions and Solana NFTs instructions.
+It’s based on the <a class="reference external" href="https://github.com/michaelhly/solana-py">Solana.py package</a>
+and on the <a class="reference external" href="https://docs.solana.com/developing/clients/jsonrpc-api/">Solana JSON RPC</a>.</p>
+<p>Python Library Features:</p>
+<ul class="simple">
+<li><p>Handle token instructions</p></li>
+<li><p>Handle NFT instructions</p></li>
+</ul>
+<p>CLI Features:</p>
+<ul class="simple">
+<li><p>Balance of local wallet for SOL / Token</p></li>
+<li><p>Transfer token to recipient wallet</p></li>
+<li><p>Bulk token transfer to multiple recipients</p></li>
+</ul>
+<p>Suggestions and PRs welcome!</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This is experimental software for a young ecosystem.
+Use at your own risk. The author is not responsible for misuse of the software or for the user failing
+to test specific commands on devnet before using on production.</p>
+</div>
+<section id="installation">
+<span id="id1"></span><h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline"></a></h2>
+<p>To install the package you’ll need to use pip. To install pip on ubuntu:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>sudo apt update
+sudo apt install python3-pip
+sudo apt install python3.8-venv
+</pre></div>
+</div>
+<p>It’s recommended to use python virtualenv, to install virtualenv:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>python3 -m venv pyenv
+<span class="nb">source</span> pyenv/bin/activate
+</pre></div>
+</div>
+<p>Latest release installation using pip install:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>pip install solen
+</pre></div>
+</div>
+</section>
+<section id="config-file">
+<span id="id2"></span><h2>Config File<a class="headerlink" href="#config-file" title="Permalink to this headline"></a></h2>
+<p>In addition to the package installation need to create a configuration file.
+The location of the configuration file is: ~/.config/solen/config.ini</p>
+<p>The endpoint section contains keys with rpc endpoints. Those keys represent the optional env values
+that can be used in Solen objects. In the following example there are 2 optional env values: dev and main.
+Based on the env value the relevant configuration will be used for: endpoint, token address and keypair.</p>
+<p>This is just a sample for a configuration file:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="o">[</span>endpoint<span class="o">]</span>
+<span class="nv">dev</span> <span class="o">=</span> https://api.devnet.solana.com
+<span class="nv">main</span> <span class="o">=</span> https://api.mainnet-beta.solana.com
+
+<span class="o">[</span>addresses<span class="o">]</span>
+<span class="nv">dev_token</span> <span class="o">=</span> 5YsymBWSdNiKWN5s8McLHw8toJLgZjhkx23gKgtWG2rZ
+<span class="nv">main_token</span> <span class="o">=</span> Fm9rHUTF5v3hwMLbStjZXqNBBoZyGriQaFM6sTFz3K8A
+
+<span class="o">[</span>solana<span class="o">]</span>
+<span class="nv">default_env</span> <span class="o">=</span> dev
+<span class="nv">dev_keypair</span> <span class="o">=</span> ~/.config/solana/id.json
+<span class="nv">main_keypair</span> <span class="o">=</span> ~/.config/solana/id.json
+</pre></div>
+</div>
+</section>
+<section id="usage-as-cli">
+<h2>Usage as CLI<a class="headerlink" href="#usage-as-cli" title="Permalink to this headline"></a></h2>
+<p>General usage:</p>
+<p>The util perform actions on the Solana blockchain.
+Each command get env parameter that should be used to select the Solana RPC uri: dev or main.
+The command will create Solana client on the relevant net,
+based on the node url in the configuration file.</p>
+<p>To get the current wallet balance:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>solen balance --env dev
+</pre></div>
+</div>
+<p>To perform a single transfer from current wallet to a destination wallet.</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>solen transfer AuMtXeRS7hws6Ktw5R6tQq3LgDYE69HwwmG9kzNniScW <span class="m">0</span>.001
+</pre></div>
+</div>
+<p>You can run multiple transfers in a bulk, based on input CSV file contains all the transfers data.
+The CSV should contain the following columns: wallet &amp; amount. For example:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>solen bulk-transfer -h
+solen bulk-transfer init transfer-file-path.csv --env dev
+solen bulk-transfer run transfer-file-path.csv --dry-run --env dev
+solen bulk-transfer run transfer-file-path.csv --env dev
+solen bulk-transfer confirm transfer-file-path.csv --env dev
+</pre></div>
+</div>
+</section>
+<section id="usage-as-library">
+<h2>Usage as Library<a class="headerlink" href="#usage-as-library" title="Permalink to this headline"></a></h2>
+<p>You can use the Solen library to perform actions related to NFT &amp; Tokens.
+For examples and more details you can read the Solen Library section,
+there are the <a class="reference internal" href="solen.html#nft-client"><span class="std std-ref">NFT Client</span></a>
+and the <a class="reference internal" href="solen.html#token-client"><span class="std std-ref">Token Client</span></a> sectoins.</p>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="solen.html">Solen Library</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="solen.html#module-solen.context">Context Object</a></li>
+<li class="toctree-l2"><a class="reference internal" href="solen.html#nft-client">NFT Client</a></li>
+<li class="toctree-l2"><a class="reference internal" href="solen.html#token-client">Token Client</a></li>
+<li class="toctree-l2"><a class="reference internal" href="solen.html#module-solen.sol_client">SOL Client</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">CLI</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="cli.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cli.html#basic">Basic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cli.html#balance">Balance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cli.html#transfer">Transfer</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+</section>
+<section id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline"></a></h1>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="solen.html" class="btn btn-neutral float-right" title="Solen Library" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Omer Duskin.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

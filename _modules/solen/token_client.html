@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>solen.token_client &mdash; solen 0.0.2 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> solen
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../index.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../solen.html">Solen Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cli.html">CLI</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">solen</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+      <li>solen.token_client</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for solen.token_client</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">csv</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">timedelta</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
+
+<span class="kn">import</span> <span class="nn">requests</span>
+<span class="kn">import</span> <span class="nn">spl.token.instructions</span> <span class="k">as</span> <span class="nn">spl_token</span>
+<span class="kn">from</span> <span class="nn">asyncit</span> <span class="kn">import</span> <span class="n">Asyncit</span>
+<span class="kn">from</span> <span class="nn">asyncit.dicts</span> <span class="kn">import</span> <span class="n">DotDict</span>
+<span class="kn">from</span> <span class="nn">solana.rpc.core</span> <span class="kn">import</span> <span class="n">RPCException</span><span class="p">,</span> <span class="n">UnconfirmedTxError</span>
+<span class="kn">from</span> <span class="nn">solana.publickey</span> <span class="kn">import</span> <span class="n">PublicKey</span>
+<span class="kn">from</span> <span class="nn">solana.rpc.types</span> <span class="kn">import</span> <span class="n">TxOpts</span>
+<span class="kn">from</span> <span class="nn">spl.token.client</span> <span class="kn">import</span> <span class="n">Token</span>
+<span class="kn">from</span> <span class="nn">solana.transaction</span> <span class="kn">import</span> <span class="n">Transaction</span>
+<span class="kn">from</span> <span class="nn">spl.token.constants</span> <span class="kn">import</span> <span class="n">TOKEN_PROGRAM_ID</span>
+<span class="kn">from</span> <span class="nn">solana.rpc.commitment</span> <span class="kn">import</span> <span class="n">COMMITMENT_RANKS</span><span class="p">,</span> <span class="n">Confirmed</span><span class="p">,</span> <span class="n">Finalized</span><span class="p">,</span> <span class="n">Commitment</span><span class="p">,</span> <span class="n">Processed</span>
+<span class="kn">from</span> <span class="nn">spl.token.instructions</span> <span class="kn">import</span> <span class="n">TransferCheckedParams</span><span class="p">,</span> <span class="n">transfer_checked</span>
+
+<span class="kn">from</span> <span class="nn">.context</span> <span class="kn">import</span> <span class="n">Context</span>
+<span class="kn">from</span> <span class="nn">.response</span> <span class="kn">import</span> <span class="n">Ok</span><span class="p">,</span> <span class="n">Err</span><span class="p">,</span> <span class="n">Response</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+<span class="n">open_utf8</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="nb">open</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;UTF-8&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="TokenClient"><a class="viewcode-back" href="../../solen.html#solen.token_client.TokenClient">[docs]</a><span class="k">class</span> <span class="nc">TokenClient</span><span class="p">:</span>  <span class="c1"># pylint: disable=too-many-instance-attributes</span>
+    <span class="sd">&quot;&quot;&quot;Token Client class.</span>
+
+<span class="sd">    :param env: The Solana env (options are based on the config file)</span>
+<span class="sd">    :param token_mint: The token mint address, token commands will be based on that token.</span>
+<span class="sd">        (default taken from the config file)</span>
+
+<span class="sd">    The Solana RPC endpoint is taken from the config file - based on the given env parameter.</span>
+<span class="sd">    For example, using the :ref:`config file &lt;index:config file&gt;`: in the example and &quot;dev&quot; parameter,</span>
+<span class="sd">    the RPC endpoint will be: `https://api.devnet.solana.com`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">token_mint</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">Context</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Init Token Client.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">context</span> <span class="o">=</span> <span class="n">context</span> <span class="ow">or</span> <span class="n">Context</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">client</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">client</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">keypair</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">keypair</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">token_mint</span> <span class="o">=</span> <span class="n">token_mint</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">configured_token_mint</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">clock_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">run_start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clock_time</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config_folder</span> <span class="o">=</span> <span class="n">Path</span><span class="o">.</span><span class="n">home</span><span class="p">()</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="s2">&quot;.config/solen&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">token</span> <span class="o">=</span> <span class="n">Token</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="p">,</span> <span class="n">PublicKey</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">token_mint</span><span class="p">),</span> <span class="n">TOKEN_PROGRAM_ID</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">keypair</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">token_decimals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_token_decimals</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_set_start_time</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">run_start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clock_time</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_elapsed_time</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">elapsed_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clock_time</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_start</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="n">elapsed_time</span><span class="p">))</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">,</span> <span class="n">maxsplit</span><span class="o">=</span><span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+<div class="viewcode-block" id="TokenClient.get_registered_info"><a class="viewcode-back" href="../../solen.html#solen.token_client.TokenClient.get_registered_info">[docs]</a>    <span class="k">def</span> <span class="nf">get_registered_info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;return Solana registered token info.</span>
+
+<span class="sd">        :param kwargs: filter param - can get only one filter option from the following:</span>
+<span class="sd">           [address, symbol, name, tags] (Default is address of configured token).</span>
+
+<span class="sd">        &gt;&gt;&gt; from solen import TokenClient</span>
+<span class="sd">        &gt;&gt;&gt; token_client = TokenClient(&quot;main&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; token_client.get_registered_info(symbol=&quot;TINY&quot;)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;address&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">token_mint</span><span class="p">}</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;can receive only one filter parameter, got </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="o">-</span> <span class="p">{</span><span class="s2">&quot;address&quot;</span><span class="p">,</span> <span class="s2">&quot;symbol&quot;</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;tags&quot;</span><span class="p">}):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;got invalid filter: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">. Look at docs for valid options&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[]</span>
+        <span class="n">filter_key</span><span class="p">,</span> <span class="n">filter_value</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">())[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">solana_tokens</span> <span class="o">=</span> <span class="s2">&quot;https://raw.githubusercontent.com/solana-labs/token-list/main/src/tokens/solana.tokenlist.json&quot;</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">solana_tokens</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">!=</span> <span class="mi">200</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[]</span>
+        <span class="n">tokens</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">content</span><span class="p">)[</span><span class="s2">&quot;tokens&quot;</span><span class="p">]</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">token_info</span> <span class="ow">in</span> <span class="n">tokens</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">filter_key</span> <span class="o">==</span> <span class="s2">&quot;tags&quot;</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">filter_value</span><span class="o">.</span><span class="n">upper</span><span class="p">())</span> <span class="ow">in</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">upper</span><span class="p">())</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">token_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">filter_key</span><span class="p">,</span> <span class="p">[])</span> <span class="k">if</span> <span class="n">v</span><span class="p">]:</span>
+                    <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">DotDict</span><span class="p">(</span><span class="n">token_info</span><span class="p">))</span>
+            <span class="k">elif</span> <span class="n">token_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">filter_key</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">==</span> <span class="n">filter_value</span><span class="p">:</span>
+                <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">DotDict</span><span class="p">(</span><span class="n">token_info</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">result</span></div>
+
+<div class="viewcode-block" id="TokenClient.get_token_decimals"><a class="viewcode-back" href="../../solen.html#solen.token_client.TokenClient.get_token_decimals">[docs]</a>    <span class="k">def</span> <span class="nf">get_token_decimals</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pubkey</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">PublicKey</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Returns the decimal config of an SPL Token type. (default is the configured token)</span>
+
+<span class="sd">        :param pubkey: The token mint address we want to get decimal info for (default is configured token).</span>
+
+<span class="sd">        &gt;&gt;&gt; from solen import TokenClient</span>
+<span class="sd">        &gt;&gt;&gt; token_client = TokenClient(&quot;dev&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; token_client.get_token_decimals()</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">pubkey</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_token_supply</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">pubkey</span><span class="p">),</span> <span class="n">commitment</span><span class="o">=</span><span class="n">Confirmed</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">response</span><span class="p">[</span><span class="s2">&quot;result&quot;</span><span class="p">][</span><span class="s2">&quot;value&quot;</span><span class="p">][</span><span class="s2">&quot;decimals&quot;</span><span class="p">]</span>
+        <span class="n">info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">token</span><span class="o">.</span><span class="n">get_mint_info</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">info</span><span class="o">.</span><span class="n">decimals</span></div>
+
+<div class="viewcode-block" id="TokenClient.balance"><a class="viewcode-back" href="../../solen.html#solen.token_client.TokenClient.balance">[docs]</a>    <span class="k">def</span> <span class="nf">balance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">owner</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">PublicKey</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Returns the token balance for the given wallet address. (default is keypair address)</span>
+
+<span class="sd">        :param owner: The address that need to query for token balance (default is configured keypair address).</span>
+
+<span class="sd">        &gt;&gt;&gt; from solen import TokenClient</span>
+<span class="sd">        &gt;&gt;&gt; token_client = TokenClient(&quot;dev&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; token_client.balance()</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">owner</span> <span class="o">=</span> <span class="n">owner</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">keypair</span><span class="o">.</span><span class="n">public_key</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">token</span><span class="o">.</span><span class="n">get_balance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_associated_address</span><span class="p">(</span><span class="n">owner</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">token_mint</span><span class="p">))</span>
+            <span class="k">if</span> <span class="s2">&quot;error&quot;</span> <span class="ow">in</span> <span class="n">response</span><span class="p">:</span>
+                <span class="n">error</span> <span class="o">=</span> <span class="n">response</span><span class="p">[</span><span class="s2">&quot;error&quot;</span><span class="p">]</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;failed to retrieve token balance. error: </span><span class="si">{</span><span class="n">error</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="mi">0</span>
+            <span class="k">return</span> <span class="n">response</span><span class="p">[</span><span class="s2">&quot;result&quot;</span><span class="p">][</span><span class="s2">&quot;value&quot;</span><span class="p">][</span><span class="s2">&quot;uiAmount&quot;</span><span class="p">]</span>
+        <span class="k">except</span> <span class="n">RPCException</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">ex</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">])[</span><span class="s2">&quot;message&quot;</span><span class="p">]</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;failed to retrieve balance. RPC error: </span><span class="si">{</span><span class="n">message</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="mi">0</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;failed to retrieve balance.. error: </span><span class="si">{</span><span class="n">ex</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="mi">0</span></div>
+
+<div class="viewcode-block" id="TokenClient.get_associated_address"><a class="viewcode-back" href="../../solen.html#solen.token_client.TokenClient.get_associated_address">[docs]</a>    <span class="k">def</span> <span class="nf">get_associated_address</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">owner</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">token</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PublicKey</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Derives the associated token address for the given wallet address and token mint.</span>
+
+<span class="sd">        :param owner: The owner address that need to query for token associated address.</span>
+<span class="sd">        :param token: The token need to query for associated address in the given address (default: configured token).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">token</span> <span class="o">=</span> <span class="n">token</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">token_mint</span>
+        <span class="k">return</span> <span class="n">spl_token</span><span class="o">.</span><span class="n">get_associated_token_address</span><span class="p">(</span><span class="n">PublicKey</span><span class="p">(</span><span class="n">owner</span><span class="p">),</span> <span class="n">PublicKey</span><span class="p">(</span><span class="n">token</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="TokenClient.is_it_token_account"><a class="viewcode-back" href="../../solen.html#solen.token_client.TokenClient.is_it_token_account">[docs]</a>    <span class="k">def</span> <span class="nf">is_it_token_account</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">address</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Returns true if the given address is a token associate account.</span>
+
+<span class="sd">        :param address: The address to query.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_account_info</span><span class="p">(</span><span class="n">address</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;result&quot;</span><span class="p">][</span><span class="s2">&quot;value&quot;</span><span class="p">]</span> <span class="ow">and</span> <span class="nb">str</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;result&quot;</span><span class="p">][</span><span class="s2">&quot;value&quot;</span><span class="p">][</span><span class="s2">&quot;owner&quot;</span><span class="p">])</span> <span class="o">==</span> <span class="nb">str</span><span class="p">(</span><span class="n">TOKEN_PROGRAM_ID</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="TokenClient.is_account_funded"><a class="viewcode-back" href="../../solen.html#solen.token_client.TokenClient.is_account_funded">[docs]</a>    <span class="k">def</span> <span class="nf">is_account_funded</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">address</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Return true id the given account exist and founded.</span>
+
+<span class="sd">        :param address: The address to query.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_account_info</span><span class="p">(</span><span class="n">address</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">response</span><span class="p">[</span><span class="s2">&quot;result&quot;</span><span class="p">][</span><span class="s2">&quot;value&quot;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span></div>
+
+    <span class="k">def</span> <span class="nf">elapsed_time</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_start</span><span class="p">):</span>
+        <span class="n">elapsed_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clock_time</span><span class="p">()</span> <span class="o">-</span> <span class="n">run_start</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="n">elapsed_time</span><span class="p">))</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">,</span> <span class="n">maxsplit</span><span class="o">=</span><span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+<div class="viewcode-block" id="TokenClient.transfer_token"><a class="viewcode-back" href="../../solen.html#solen.token_client.TokenClient.transfer_token">[docs]</a>    <span class="k">def</span> <span class="nf">transfer_token</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dest</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">amount</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">dry_run</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">skip_confirmation</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+                       <span class="n">commitment</span><span class="p">:</span> <span class="n">Commitment</span> <span class="o">=</span> <span class="n">Confirmed</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Generate an instruction that transfers amount of configured token from one self account to another.</span>
+
+<span class="sd">        :param dest: recipient address.</span>
+<span class="sd">        :param amount: amountof token to transfer.</span>
+<span class="sd">        :param dry_run: if true the transfer will not be executed.</span>
+<span class="sd">        :param skip_confirmation: if true send transfer will not be coffirmed. It might be faster.</span>
+<span class="sd">        :param commitment: the commitment type for send transfer.</span>
+
+<span class="sd">        &gt;&gt;&gt; from solen import TokenClient</span>
+<span class="sd">        &gt;&gt;&gt; from solana.rpc.commitment import Processed</span>
+<span class="sd">        &gt;&gt;&gt; token_client = TokenClient(&quot;dev&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; token_client.transfer_token(&quot;Cy4y1XGR9pj7vFikWVGrdQAPWCChqV9gQHCLht6eXBLW&quot;, 0.01, True, Processed)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">token</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">token_mint</span>
+        <span class="n">decimals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">token_decimals</span>
+        <span class="n">run_start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clock_time</span><span class="p">()</span>
+        <span class="n">base_response</span> <span class="o">=</span> <span class="n">DotDict</span><span class="p">(</span><span class="n">dest</span><span class="o">=</span><span class="n">dest</span><span class="p">,</span> <span class="n">amount</span><span class="o">=</span><span class="n">amount</span><span class="p">,</span> <span class="n">confirmed</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">amount_lamport</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">amount</span> <span class="o">*</span> <span class="nb">pow</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">token_decimals</span><span class="p">))</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;going to transfer </span><span class="si">{</span><span class="n">amount</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">amount_lamport</span><span class="si">}</span><span class="s2"> lamport) from local wallet to </span><span class="si">{</span><span class="n">dest</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">dry_run</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">base_response</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">signature</span><span class="o">=</span><span class="s2">&quot;test-run&quot;</span><span class="p">,</span> <span class="n">ok</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">elapsed_time</span><span class="p">(</span><span class="n">run_start</span><span class="p">))</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_it_token_account</span><span class="p">(</span><span class="n">dest</span><span class="p">):</span>
+            <span class="n">dest_token_address</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_associated_address</span><span class="p">(</span><span class="n">dest</span><span class="p">))</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;recipient associated token account: </span><span class="si">{</span><span class="n">dest_token_address</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_account_funded</span><span class="p">(</span><span class="n">dest_token_address</span><span class="p">):</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;create &amp; fund recipient associated token account: </span><span class="si">{</span><span class="n">dest_token_address</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_associated_token_account</span><span class="p">(</span><span class="n">dest</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">err</span><span class="p">:</span>
+                    <span class="n">err_msg</span> <span class="o">=</span> <span class="s2">&quot;failed to transfer token (failed to create associated token account)&quot;</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">err_msg</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="n">base_response</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">err</span><span class="o">=</span><span class="n">err_msg</span><span class="p">,</span> <span class="n">ok</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">elapsed_time</span><span class="p">(</span><span class="n">run_start</span><span class="p">))</span>
+            <span class="n">dest</span> <span class="o">=</span> <span class="n">dest_token_address</span>
+        <span class="n">transaction</span> <span class="o">=</span> <span class="n">Transaction</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">transaction</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+                <span class="n">transfer_checked</span><span class="p">(</span>
+                    <span class="n">TransferCheckedParams</span><span class="p">(</span>
+                        <span class="n">program_id</span><span class="o">=</span><span class="n">TOKEN_PROGRAM_ID</span><span class="p">,</span>
+                        <span class="n">source</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">get_associated_address</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">keypair</span><span class="o">.</span><span class="n">public_key</span><span class="p">,</span> <span class="n">token</span><span class="p">),</span>
+                        <span class="n">mint</span><span class="o">=</span><span class="n">PublicKey</span><span class="p">(</span><span class="n">token</span><span class="p">),</span>
+                        <span class="n">dest</span><span class="o">=</span><span class="n">PublicKey</span><span class="p">(</span><span class="n">dest</span><span class="p">),</span>
+                        <span class="n">owner</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">keypair</span><span class="o">.</span><span class="n">public_key</span><span class="p">,</span>
+                        <span class="n">amount</span><span class="o">=</span><span class="n">amount_lamport</span><span class="p">,</span>
+                        <span class="n">decimals</span><span class="o">=</span><span class="n">decimals</span><span class="p">,</span>
+                        <span class="n">signers</span><span class="o">=</span><span class="p">[],</span>
+                    <span class="p">)</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">options</span> <span class="o">=</span> <span class="n">TxOpts</span><span class="p">(</span><span class="n">skip_confirmation</span><span class="o">=</span><span class="n">skip_confirmation</span><span class="p">,</span> <span class="n">preflight_commitment</span><span class="o">=</span><span class="n">commitment</span><span class="p">)</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">send_transaction</span><span class="p">(</span><span class="n">transaction</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">keypair</span><span class="p">,</span> <span class="n">opts</span><span class="o">=</span><span class="n">options</span><span class="p">)</span>
+            <span class="n">trn_sig</span> <span class="o">=</span> <span class="n">response</span><span class="p">[</span><span class="s2">&quot;result&quot;</span><span class="p">]</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;token been transferred, transaction signature: </span><span class="si">{</span><span class="n">trn_sig</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">base_response</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">signature</span><span class="o">=</span><span class="n">trn_sig</span><span class="p">,</span> <span class="n">ok</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">elapsed_time</span><span class="p">(</span><span class="n">run_start</span><span class="p">))</span>
+        <span class="k">except</span> <span class="n">RPCException</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">ex</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">])[</span><span class="s2">&quot;message&quot;</span><span class="p">]</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;failed to transfer token. RPC error: </span><span class="si">{</span><span class="n">message</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">base_response</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">err</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ex</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">ok</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">elapsed_time</span><span class="p">(</span><span class="n">run_start</span><span class="p">))</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;failed to transfer token. error: </span><span class="si">{</span><span class="n">ex</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">base_response</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">err</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ex</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">ok</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">elapsed_time</span><span class="p">(</span><span class="n">run_start</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="TokenClient.create_associated_token_account"><a class="viewcode-back" href="../../solen.html#solen.token_client.TokenClient.create_associated_token_account">[docs]</a>    <span class="k">def</span> <span class="nf">create_associated_token_account</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">owner</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Create an associated token account</span>
+
+<span class="sd">        :param owner: The address that need to create a token associated address for.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">Ok</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">token</span><span class="o">.</span><span class="n">create_associated_token_account</span><span class="p">(</span><span class="n">PublicKey</span><span class="p">(</span><span class="n">owner</span><span class="p">))))</span>
+        <span class="k">except</span> <span class="n">RPCException</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">ex</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">])[</span><span class="s2">&quot;message&quot;</span><span class="p">]</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;failed to create associate token account for </span><span class="si">{</span><span class="n">owner</span><span class="si">}</span><span class="s2">. RPC error: </span><span class="si">{</span><span class="n">message</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">Err</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ex</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">UnconfirmedTxError</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="n">ex</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;failed to create associate token account for </span><span class="si">{</span><span class="n">owner</span><span class="si">}</span><span class="s2">. UnconfirmedTx error: </span><span class="si">{</span><span class="n">message</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">Err</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">message</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;failed to create associate token account. error: </span><span class="si">{</span><span class="n">ex</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">Err</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;failed to create associate token account for: </span><span class="si">{</span><span class="n">owner</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TokenClient.process_transfer_csv"><a class="viewcode-back" href="../../solen.html#solen.token_client.TokenClient.process_transfer_csv">[docs]</a>    <span class="k">def</span> <span class="nf">process_transfer_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">transfer_csv_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Read the csv file and return dict of all the lines.</span>
+<span class="sd">        The line index is the key and not the wallet since wallet may exist more than once.</span>
+
+<span class="sd">        :param transfer_csv_path: Path to a csv file in the format of: wallet,amount.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">in_process_init</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">with</span> <span class="n">open_utf8</span><span class="p">(</span><span class="n">transfer_csv_path</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">reader</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">DictReader</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">reader</span><span class="p">):</span>
+                <span class="n">in_process_init</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+                    <span class="n">wallet</span><span class="o">=</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;wallet&quot;</span><span class="p">],</span> <span class="n">amount</span><span class="o">=</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;amount&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span> <span class="n">finalized</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">signature</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">error</span><span class="o">=</span><span class="s2">&quot;&quot;</span>
+                <span class="p">)</span>
+        <span class="k">return</span> <span class="n">in_process_init</span></div>
+
+<div class="viewcode-block" id="TokenClient.bulk_transfer_token_init"><a class="viewcode-back" href="../../solen.html#solen.token_client.TokenClient.bulk_transfer_token_init">[docs]</a>    <span class="k">def</span> <span class="nf">bulk_transfer_token_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">transfer_csv_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Create the bulk transfer config based on given CSV file.</span>
+
+<span class="sd">        :param transfer_csv_path: Path to a csv file in the format of: wallet,amount.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;going to create transfer config file based on file: </span><span class="si">{</span><span class="n">transfer_csv_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">file_extension</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">transfer_csv_path</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">file_extension</span> <span class="o">!=</span> <span class="s2">&quot;.csv&quot;</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;unsupported file type: </span><span class="si">{</span><span class="n">file_extension</span><span class="si">}</span><span class="s2">. expecting csv&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">transfer_csv_path</span><span class="p">):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;missing file: </span><span class="si">{</span><span class="n">transfer_csv_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="n">in_process_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_folder</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="n">transfer_csv_path</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;.csv&quot;</span><span class="p">,</span> <span class="s2">&quot;.json&quot;</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">in_process_file</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="n">in_process</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">in_process_file</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">))</span>
+            <span class="n">left_items</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="ow">not</span> <span class="n">i</span><span class="p">[</span><span class="s2">&quot;signature&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">in_process</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+            <span class="n">total_to_transfer</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">i</span><span class="p">[</span><span class="s2">&quot;amount&quot;</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">in_process</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">i</span><span class="p">[</span><span class="s2">&quot;signature&quot;</span><span class="p">])</span>
+            <span class="n">total_to_transfer_str</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">total_to_transfer</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;transfer config file already exist: </span><span class="si">{</span><span class="n">in_process_file</span><span class="si">}</span><span class="s2">. &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;left records: </span><span class="si">{</span><span class="n">left_items</span><span class="si">}</span><span class="s2">, left to transfer: </span><span class="si">{</span><span class="n">total_to_transfer_str</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="k">return</span>
+        <span class="n">in_process_init</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">process_transfer_csv</span><span class="p">(</span><span class="n">transfer_csv_path</span><span class="p">)</span>
+        <span class="n">in_process_file</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">in_process_init</span><span class="p">),</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+        <span class="n">in_process</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">in_process_file</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">))</span>
+        <span class="n">total_to_transfer</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">i</span><span class="p">[</span><span class="s2">&quot;amount&quot;</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">in_process</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+        <span class="n">total_to_transfer_str</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">total_to_transfer</span><span class="si">:</span><span class="s2">,.4f</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;transfer config file been created: </span><span class="si">{</span><span class="n">in_process_file</span><span class="si">}</span><span class="s2"> &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;(total records: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">in_process</span><span class="p">)</span><span class="si">}</span><span class="s2">, total to transfer: </span><span class="si">{</span><span class="n">total_to_transfer_str</span><span class="si">}</span><span class="s2">)&quot;</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="TokenClient.bulk_transfer_token"><a class="viewcode-back" href="../../solen.html#solen.token_client.TokenClient.bulk_transfer_token">[docs]</a>    <span class="k">def</span> <span class="nf">bulk_transfer_token</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">transfer_csv_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">dry_run</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">skip_confirm</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Transfer token to multiple addresses, based on the content of transfer_csv_path.</span>
+
+<span class="sd">        :param transfer_csv_path: Path to a csv file in the format of: wallet,amount.</span>
+<span class="sd">        :param dry_run: When true the transactions will be skipped.</span>
+<span class="sd">        :param skip_confirm: When true transaction confirmation will be skipped. Run will be faster but less reliable.</span>
+
+<span class="sd">        &gt;&gt;&gt; from solen import TokenClient</span>
+<span class="sd">        &gt;&gt;&gt; token_client = TokenClient(&quot;main&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; token_client.bulk_transfer_token(csv_path)</span>
+<span class="sd">        when csv contain transfer data, for example:</span>
+<span class="sd">        wallet,amount</span>
+<span class="sd">        Cy4y1XGR9pj7vFikWVGrdQAPWCChqV9gQHCLht6eXBLW,0.001</span>
+<span class="sd">        Cy4y1XGR9pj7vFikWVGrdQAPWCChqV9gQHCLht6eXBLW,0.001</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;going to transfer tokens based on file: </span><span class="si">{</span><span class="n">transfer_csv_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">run_start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clock_time</span><span class="p">()</span>
+        <span class="n">file_extension</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">transfer_csv_path</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">file_extension</span> <span class="o">!=</span> <span class="s2">&quot;.csv&quot;</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;unsupported file type: </span><span class="si">{</span><span class="n">file_extension</span><span class="si">}</span><span class="s2">. expecting csv&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">transfer_csv_path</span><span class="p">):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;missing file: </span><span class="si">{</span><span class="n">transfer_csv_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="n">in_process_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_folder</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="n">transfer_csv_path</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;.csv&quot;</span><span class="p">,</span> <span class="s2">&quot;.json&quot;</span><span class="p">))</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">in_process_file</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;missing transfer config file: (</span><span class="si">{</span><span class="n">in_process_file</span><span class="si">}</span><span class="s2">). run bulk-transfer init command to create it&quot;</span>
+            <span class="p">)</span>
+            <span class="k">return</span>
+        <span class="n">in_process</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">in_process_file</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">))</span>
+        <span class="n">total_items</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">in_process</span><span class="p">)</span>
+        <span class="n">left_items</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="ow">not</span> <span class="n">i</span><span class="p">[</span><span class="s2">&quot;signature&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">in_process</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;going to handle </span><span class="si">{</span><span class="n">left_items</span><span class="si">}</span><span class="s2"> left to transfer, out of </span><span class="si">{</span><span class="n">total_items</span><span class="si">}</span><span class="s2"> transfer records&quot;</span><span class="p">)</span>
+        <span class="n">counter</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">in_process</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;signature&quot;</span><span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="n">counter</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">current_token_balance</span> <span class="o">=</span> <span class="s2">&quot;N/A in dry-run&quot;</span> <span class="k">if</span> <span class="n">dry_run</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">balance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">keypair</span><span class="o">.</span><span class="n">public_key</span><span class="p">)</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">] [</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_elapsed_time</span><span class="p">()</span><span class="si">}</span><span class="s2">] handle transfer </span><span class="si">{</span><span class="n">counter</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">left_items</span><span class="si">}</span><span class="s2">, current balance: &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">current_token_balance</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="n">transfer_args</span> <span class="o">=</span> <span class="n">DotDict</span><span class="p">(</span>
+                <span class="n">dest</span><span class="o">=</span><span class="n">item</span><span class="p">[</span><span class="s2">&quot;wallet&quot;</span><span class="p">],</span>
+                <span class="n">amount</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s2">&quot;amount&quot;</span><span class="p">]),</span>
+                <span class="n">dry_run</span><span class="o">=</span><span class="n">dry_run</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">skip_confirm</span><span class="p">:</span>
+                <span class="n">transfer_args</span><span class="o">.</span><span class="n">skip_confirmation</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="n">transfer_args</span><span class="o">.</span><span class="n">commitment</span> <span class="o">=</span> <span class="n">Processed</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transfer_token</span><span class="p">(</span><span class="o">**</span><span class="n">transfer_args</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">dry_run</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">response</span><span class="o">.</span><span class="n">ok</span><span class="p">:</span>
+                <span class="n">in_process</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="n">response</span><span class="o">.</span><span class="n">err</span><span class="p">,</span> <span class="s2">&quot;time&quot;</span><span class="p">:</span> <span class="n">response</span><span class="o">.</span><span class="n">time</span><span class="p">})</span>
+                <span class="k">if</span> <span class="s2">&quot;Node is behind by&quot;</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">err</span><span class="p">:</span>
+                    <span class="c1"># When this error occurs (like &quot;RPC error: Node is behind by 169 slots&quot;)</span>
+                    <span class="c1"># it&#39;ll take at least a sec to start working again. keep trying will keep failing</span>
+                    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">in_process</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;signature&quot;</span><span class="p">:</span> <span class="n">response</span><span class="o">.</span><span class="n">signature</span><span class="p">,</span> <span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="s2">&quot;time&quot;</span><span class="p">:</span> <span class="n">response</span><span class="o">.</span><span class="n">time</span><span class="p">})</span>
+            <span class="n">in_process_file</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">in_process</span><span class="p">),</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+        <span class="n">total_transferred</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">i</span><span class="p">[</span><span class="s2">&quot;amount&quot;</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">in_process</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">if</span> <span class="n">i</span><span class="p">[</span><span class="s2">&quot;signature&quot;</span><span class="p">])</span>
+        <span class="n">total_not_transferred</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">i</span><span class="p">[</span><span class="s2">&quot;amount&quot;</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">in_process</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">i</span><span class="p">[</span><span class="s2">&quot;signature&quot;</span><span class="p">])</span>
+        <span class="n">total_transferred_str</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">total_transferred</span><span class="si">:</span><span class="s2">,.4f</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">total_not_transferred_str</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">total_not_transferred</span><span class="si">:</span><span class="s2">,.4f</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Done after </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">elapsed_time</span><span class="p">(</span><span class="n">run_start</span><span class="p">)</span><span class="si">}</span><span class="s2">. total transferred: </span><span class="si">{</span><span class="n">total_transferred_str</span><span class="si">}</span><span class="s2">, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;total not transferred: </span><span class="si">{</span><span class="n">total_not_transferred_str</span><span class="si">}</span><span class="s2"> (unverified)&quot;</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="TokenClient.bulk_confirm_transactions"><a class="viewcode-back" href="../../solen.html#solen.token_client.TokenClient.bulk_confirm_transactions">[docs]</a>    <span class="k">def</span> <span class="nf">bulk_confirm_transactions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">transfer_csv_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Verify that transfer amount transaction signatures are finalized.</span>
+
+<span class="sd">        :param transfer_csv_path: Path to a csv file in the format of: wallet,amount.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">run_start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clock_time</span><span class="p">()</span>
+        <span class="n">in_process_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_folder</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="n">transfer_csv_path</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;.csv&quot;</span><span class="p">,</span> <span class="s2">&quot;.json&quot;</span><span class="p">))</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">in_process_file</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;missing in-process file: (</span><span class="si">{</span><span class="n">in_process_file</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="n">in_process</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">in_process_file</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">))</span>
+        <span class="n">total_items</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">in_process</span><span class="p">)</span>
+        <span class="n">left_items</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="ow">not</span> <span class="n">i</span><span class="p">[</span><span class="s2">&quot;finalized&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">in_process</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;going to handle </span><span class="si">{</span><span class="n">left_items</span><span class="si">}</span><span class="s2"> left not verified, out of </span><span class="si">{</span><span class="n">total_items</span><span class="si">}</span><span class="s2"> records&quot;</span><span class="p">)</span>
+
+        <span class="n">asyncit</span> <span class="o">=</span> <span class="n">Asyncit</span><span class="p">(</span><span class="n">save_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">save_as_json</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">pool_size</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+                          <span class="n">rate_limit</span><span class="o">=</span><span class="p">[{</span><span class="s2">&quot;period_sec&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span> <span class="s2">&quot;max_calls&quot;</span><span class="p">:</span> <span class="mi">200</span><span class="p">}])</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">in_process</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;signature&quot;</span><span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;finalized&quot;</span><span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="n">asyncit</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">confirm_transaction</span><span class="p">,</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;signature&quot;</span><span class="p">],</span> <span class="n">response_extra</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;index&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)})</span>
+        <span class="n">asyncit</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+        <span class="n">confirm_result</span> <span class="o">=</span> <span class="n">asyncit</span><span class="o">.</span><span class="n">get_output</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">confirm_result</span><span class="p">:</span>
+            <span class="n">in_process</span><span class="p">[</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;index&quot;</span><span class="p">]][</span><span class="s2">&quot;finalized&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;confirmed&quot;</span><span class="p">]</span>
+        <span class="n">in_process_file</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">in_process</span><span class="p">),</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+        <span class="n">total_finalized</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">i</span><span class="p">[</span><span class="s2">&quot;finalized&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">in_process</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Done after </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">elapsed_time</span><span class="p">(</span><span class="n">run_start</span><span class="p">)</span><span class="si">}</span><span class="s2">. total finalized: </span><span class="si">{</span><span class="n">total_finalized</span><span class="si">}</span><span class="s2"> / </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">in_process</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TokenClient.confirm_transaction"><a class="viewcode-back" href="../../solen.html#solen.token_client.TokenClient.confirm_transaction">[docs]</a>    <span class="k">def</span> <span class="nf">confirm_transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tx_sig</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">commitment</span><span class="p">:</span> <span class="n">Commitment</span> <span class="o">=</span> <span class="n">Finalized</span><span class="p">,</span> <span class="n">sleep_seconds</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+                            <span class="n">response_extra</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">30</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Confirm the transaction identified by the specified signature.</span>
+
+<span class="sd">        :param tx_sig: The transaction signature to confirm.</span>
+<span class="sd">        :param commitment: Bank state to query. It can be either &quot;finalized&quot;, &quot;confirmed&quot; or &quot;processed&quot;.</span>
+<span class="sd">        :param sleep_seconds: The number of seconds to sleep when polling the signature status.</span>
+<span class="sd">        :param response_extra: Extra data for response, in dict format (will be added as key: value in response)</span>
+<span class="sd">        :param timeout: Timeout in seconds to wait for confirmation</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">timeout</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">+</span> <span class="n">timeout</span>
+        <span class="n">resp</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">last_confirmation_amount</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">max_retries</span> <span class="o">=</span> <span class="mi">60</span>
+        <span class="n">confirmed</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">base_response</span> <span class="o">=</span> <span class="n">DotDict</span><span class="p">(</span><span class="n">signature</span><span class="o">=</span><span class="n">tx_sig</span><span class="p">,</span> <span class="n">confirmed</span><span class="o">=</span><span class="n">confirmed</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">response_extra</span><span class="p">:</span>
+            <span class="n">base_response</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">response_extra</span><span class="p">)</span>
+        <span class="k">while</span> <span class="n">max_retries</span> <span class="ow">and</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">timeout</span><span class="p">:</span>
+            <span class="n">max_retries</span> <span class="o">-=</span> <span class="mi">1</span>
+            <span class="n">resp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_signature_statuses</span><span class="p">([</span><span class="n">tx_sig</span><span class="p">],</span> <span class="n">search_transaction_history</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">maybe_rpc_error</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;error&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">maybe_rpc_error</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unable to confirm transaction </span><span class="si">{</span><span class="n">tx_sig</span><span class="si">}</span><span class="s2">. </span><span class="si">{</span><span class="n">maybe_rpc_error</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">break</span>
+            <span class="n">resp_value</span> <span class="o">=</span> <span class="n">resp</span><span class="p">[</span><span class="s2">&quot;result&quot;</span><span class="p">][</span><span class="s2">&quot;value&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">resp_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">confirmation_status</span> <span class="o">=</span> <span class="n">resp_value</span><span class="p">[</span><span class="s2">&quot;confirmationStatus&quot;</span><span class="p">]</span>
+                <span class="n">confirmation_rank</span> <span class="o">=</span> <span class="n">COMMITMENT_RANKS</span><span class="p">[</span><span class="n">confirmation_status</span><span class="p">]</span>
+                <span class="n">commitment_rank</span> <span class="o">=</span> <span class="n">COMMITMENT_RANKS</span><span class="p">[</span><span class="n">commitment</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">confirmation_rank</span> <span class="o">&gt;=</span> <span class="n">commitment_rank</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;transaction </span><span class="si">{</span><span class="n">tx_sig</span><span class="si">}</span><span class="s2"> confirmed (rank: </span><span class="si">{</span><span class="n">confirmation_rank</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+                    <span class="n">confirmed</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="k">break</span>
+                <span class="n">confirmation_amount</span> <span class="o">=</span> <span class="n">resp_value</span><span class="p">[</span><span class="s2">&quot;confirmations&quot;</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">last_confirmation_amount</span> <span class="o">!=</span> <span class="n">confirmation_amount</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;transaction </span><span class="si">{</span><span class="n">tx_sig</span><span class="si">}</span><span class="s2"> confirmed by </span><span class="si">{</span><span class="n">confirmation_amount</span><span class="si">}</span><span class="s2"> validators&quot;</span><span class="p">)</span>
+                    <span class="n">last_confirmation_amount</span> <span class="o">=</span> <span class="n">confirmation_amount</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">sleep_seconds</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">maybe_rpc_error</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;error&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unable to confirm transaction </span><span class="si">{</span><span class="n">tx_sig</span><span class="si">}</span><span class="s2">. </span><span class="si">{</span><span class="n">maybe_rpc_error</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">base_response</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">confirmed</span><span class="o">=</span><span class="n">confirmed</span><span class="p">)</span></div></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Omer Duskin.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

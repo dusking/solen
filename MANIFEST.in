@@ -1,4 +1,0 @@
-include VERSION
-include LICENSE
-include version_helpers.py
-include config/config_template.ini

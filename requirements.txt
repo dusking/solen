@@ -1,5 +1,0 @@
-colorama==0.4.4
-argh==0.26.2
-sh==1.14.1
-sphinx==4.4.0
-sphinx_rtd_theme==1.0.0
