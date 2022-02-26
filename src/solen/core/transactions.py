@@ -107,7 +107,7 @@ class Transactions:
             except Exception as ex:
                 logger.error(f"Failed attempt {attempt}: {ex}")
                 continue
-        return
+        return None
 
     def await_confirmation(self, client, signatures, max_timeout=60, target=20, finalized=True):
         elapsed = 0

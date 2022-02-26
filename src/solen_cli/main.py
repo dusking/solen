@@ -7,7 +7,7 @@ import pkg_resources
 from solen import Context, NFTClient, SOLClient, TokenClient
 
 from .log_print import LogPrint
-from .bulk_transfer import run, init, confirm, status
+from .bulk_transfer import run, init, status, confirm
 
 log_print = LogPrint()
 

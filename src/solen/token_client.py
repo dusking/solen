@@ -18,7 +18,7 @@ from solana.rpc.types import TxOpts
 from spl.token.client import Token
 from solana.transaction import Transaction
 from spl.token.constants import TOKEN_PROGRAM_ID
-from solana.rpc.commitment import COMMITMENT_RANKS, Confirmed, Finalized, Commitment, Processed
+from solana.rpc.commitment import COMMITMENT_RANKS, Confirmed, Finalized, Processed, Commitment
 from spl.token.instructions import TransferCheckedParams, transfer_checked
 
 from .context import Context
@@ -162,8 +162,14 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
         elapsed_time = self.clock_time() - run_start
         return str(timedelta(seconds=elapsed_time)).split(".", maxsplit=1)[0]
 
-    def transfer_token(self, dest: str, amount: float, dry_run: bool = False, skip_confirmation: bool = False,
-                       commitment: Commitment = Confirmed) -> Dict:
+    def transfer_token(
+        self,
+        dest: str,
+        amount: float,
+        dry_run: bool = False,
+        skip_confirmation: bool = False,
+        commitment: Commitment = Confirmed,
+    ) -> Dict:
         """Generate an instruction that transfers amount of configured token from one self account to another.
 
         :param dest: recipient address.
@@ -347,11 +353,7 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
                 f"[{i}] [{self._elapsed_time()}] handle transfer {counter}/{left_items}, current balance: "
                 f"{current_token_balance}"
             )
-            transfer_args = DotDict(
-                dest=item["wallet"],
-                amount=float(item["amount"]),
-                dry_run=dry_run
-            )
+            transfer_args = DotDict(dest=item["wallet"], amount=float(item["amount"]), dry_run=dry_run)
             if skip_confirm:
                 transfer_args.skip_confirmation = True
                 transfer_args.commitment = Processed
@@ -391,8 +393,9 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
         left_items = sum(not i["finalized"] for i in in_process.values())
         logger.info(f"going to handle {left_items} left not verified, out of {total_items} records")
 
-        asyncit = Asyncit(save_output=True, save_as_json=True, pool_size=200,
-                          rate_limit=[{"period_sec": 5, "max_calls": 200}])
+        asyncit = Asyncit(
+            save_output=True, save_as_json=True, pool_size=200, rate_limit=[{"period_sec": 5, "max_calls": 100}]
+        )
         for i, item in in_process.items():
             if not item.get("signature"):
                 continue
@@ -401,14 +404,25 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
             asyncit.run(self.confirm_transaction, item["signature"], response_extra={"index": str(i)})
         asyncit.wait()
         confirm_result = asyncit.get_output()
+        if not confirm_result:
+            logger.info("nothing to update in process file")
+            return
         for result in confirm_result:
             in_process[result["index"]]["finalized"] = result["confirmed"]
         in_process_file.write_text(json.dumps(in_process), encoding="utf-8")
         total_finalized = sum(i["finalized"] for i in in_process.values())
-        logger.info(f"Done after {self.elapsed_time(run_start)}. total finalized: {total_finalized} / {len(in_process)}")
+        logger.info(
+            f"Done after {self.elapsed_time(run_start)}. total finalized: {total_finalized} / {len(in_process)}"
+        )
 
-    def confirm_transaction(self, tx_sig: str, commitment: Commitment = Finalized, sleep_seconds: float = 1.0,
-                            response_extra: Optional[Dict] = None, timeout: Optional[int] = 30) -> Dict:
+    def confirm_transaction(
+        self,
+        tx_sig: str,
+        commitment: Commitment = Finalized,
+        sleep_seconds: float = 1.0,
+        response_extra: Optional[Dict] = None,
+        timeout: Optional[int] = 30,
+    ) -> Dict:
         """Confirm the transaction identified by the specified signature.
 
         :param tx_sig: The transaction signature to confirm.
@@ -463,11 +477,16 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
             return response.update(err="missing json file")
         in_process = json.loads(in_process_file.read_text(encoding="utf-8"))
         total_items = len(in_process)
-        left_items = sum(not i["finalized"] for i in in_process.values())
+        items_with_no_signature = sum(not i["signature"] for i in in_process.values())
+        items_with_signature_but_not_finalized = sum(not i["finalized"] for i in in_process.values() if i["signature"])
         total_not_confirmed_to_transfer = sum(float(i["amount"]) for i in in_process.values() if not i["finalized"])
         total_not_confirmed_to_transfer_str = f"{total_not_confirmed_to_transfer:,.4f}"
         total_to_transfer = sum(float(i["amount"]) for i in in_process.values())
         total_to_transfer_str = f"{total_to_transfer:,.4f}"
-        return response.update(total_items=total_items, left_items=left_items,
-                               total_to_transfer=total_to_transfer_str,
-                               left_unconfirmed_to_transfer=total_not_confirmed_to_transfer_str)
+        return response.update(
+            total_items=total_items,
+            items_with_no_signature=items_with_no_signature,
+            items_with_signature_but_not_finalized=items_with_signature_but_not_finalized,
+            total_to_transfer=total_to_transfer_str,
+            left_unconfirmed_to_transfer=total_not_confirmed_to_transfer_str,
+        )

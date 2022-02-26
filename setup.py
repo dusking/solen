@@ -33,6 +33,7 @@ setup_kwargs = dict(
         "solana",
         "colorama",
         "argh",
+        "prettytable",
         "asyncit"
     ],
     python_requires=">=3.7",

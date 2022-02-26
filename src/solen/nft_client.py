@@ -95,8 +95,9 @@ class NFTClient:
         >>> metadata = nft_client.nft.bulk_get_data(["DAysz5tmEMQBhXgcQHXrhQaF3rGwVw3LKoj5vMHY9vxM",
         >>>                                          "7Sde2VNGTcHv5wmgrYTvGW9h8Umiob5MdTq6Y7BuTw7h"])
         """
-        asyncit = Asyncit(save_output=True, save_as_json=True, pool_size=200,
-                          rate_limit=[{"period_sec": 5, "max_calls": 200}])
+        asyncit = Asyncit(
+            save_output=True, save_as_json=True, pool_size=200, rate_limit=[{"period_sec": 5, "max_calls": 200}]
+        )
         for mint_key in mint_key_list:
             asyncit.run(self.get_data, mint_key, sort_creators_by_share)
         asyncit.wait()
