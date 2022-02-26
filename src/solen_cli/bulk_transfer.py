@@ -2,6 +2,7 @@ import argh
 
 from solen import TokenClient
 
+from .table import dict_to_pt
 from .log_print import LogPrint
 
 log_print = LogPrint()
@@ -21,8 +22,13 @@ def init(csv, env="dev"):
 @argh.arg("csv", help="A csv file with wallet,amount to be transfer")
 @argh.arg("-e", "--env", help="Solana env (dev / main)")
 @argh.arg("-d", "--dry-run", action="store_true", help="Dry run - don't send transactions")
-@argh.arg("-s", "--skip_confirm", default=False, action="store_true",
-          help="Run transaction without confirmations - to make it faster")
+@argh.arg(
+    "-s",
+    "--skip_confirm",
+    default=False,
+    action="store_true",
+    help="Run transaction without confirmations - to make it faster",
+)
 def run(csv, dry_run=False, env=None, skip_confirm=False):
     """
     Transfer token to multiple addresses, based on the content of the given csv
@@ -52,6 +58,5 @@ def status(csv, env="dev"):
     """
     log_print.header("bulk transfer confirm")
     token_client = TokenClient(env)
-    response = token_client.get_transfer_status(csv)
-    print(response)
-
+    status_response = token_client.get_transfer_status(csv)
+    print(dict_to_pt(status_response, align="l"))

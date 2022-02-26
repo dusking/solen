@@ -22,7 +22,7 @@ class ConfigParser(configparser.ConfigParser):  # pylint: disable=too-many-ances
         if not include_defaults:
             try:
                 return list(self._sections[section].keys())
-            except KeyError as ex :
+            except KeyError as ex:
                 raise NoSectionError(section) from ex
         else:
             return super().options(section)
@@ -34,7 +34,9 @@ class ConfigParser(configparser.ConfigParser):  # pylint: disable=too-many-ances
         items = self.items(section, include_defaults)
         return DotDict(dict(items))
 
-    def items(self, section=_UNSET, raw=False, vars=None, include_defaults=True):  # pylint: disable=redefined-builtin, arguments-differ
+    def items(
+        self, section=_UNSET, raw=False, vars=None, include_defaults=True
+    ):  # pylint: disable=redefined-builtin, arguments-differ
         """Return a list of (name, value) tuples for each option in a section.
 
         :param section: the section to get items for.
