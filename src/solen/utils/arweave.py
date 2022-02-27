@@ -8,7 +8,6 @@ from pathlib import Path
 
 import requests
 from asyncit.dicts import DotDict
-
 from arweave.arweave_lib import Wallet, Transaction
 from arweave.transaction_uploader import get_uploader
 
