@@ -71,8 +71,8 @@
 <h1>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline"></a></h1>
 <a class="reference external image-reference" href="https://pypi.org/project/solen/"><img alt="PyPI version" src="https://img.shields.io/pypi/v/solen?color=blue" /></a>
 <a class="reference external image-reference" href="https://github.com/dusking/solen/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/License-MIT-yellow.svg" /></a>
-<p>Solen is both CLI and a python library aim to handle the RPC commands for a Solana based Token.
-It handle Solana based token instructions and Solana NFTs instructions.
+<p>Solen is a base Python util for Solana based token commands.
+You can use it as a CLI tool and as a python library.
 It’s based on the <a class="reference external" href="https://github.com/michaelhly/solana-py">Solana.py package</a>
 and on the <a class="reference external" href="https://docs.solana.com/developing/clients/jsonrpc-api/">Solana JSON RPC</a>.</p>
 <p>Python Library Features:</p>
@@ -82,9 +82,11 @@ and on the <a class="reference external" href="https://docs.solana.com/developin
 </ul>
 <p>CLI Features:</p>
 <ul class="simple">
-<li><p>Balance of local wallet for SOL / Token</p></li>
-<li><p>Transfer token to recipient wallet</p></li>
-<li><p>Bulk token transfer to multiple recipients</p></li>
+<li><p>Balance for configured token and NFTs for local wallet.</p></li>
+<li><p>Transfer token to recipient wallet.</p></li>
+<li><p>Bulk token transfer to multiple recipients.</p></li>
+<li><p>NFT update.</p></li>
+<li><p>Bulk NFT update.</p></li>
 </ul>
 <p>Suggestions and PRs welcome!</p>
 <div class="admonition note">
@@ -93,6 +95,7 @@ and on the <a class="reference external" href="https://docs.solana.com/developin
 Use at your own risk. The author is not responsible for misuse of the software or for the user failing
 to test specific commands on devnet before using on production.</p>
 </div>
+<p>See also: [the Solana tool suite](<a class="reference external" href="https://docs.solana.com/cli/install-solana-cli-tools">https://docs.solana.com/cli/install-solana-cli-tools</a>), the official solana cli.</p>
 <section id="installation">
 <span id="id1"></span><h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline"></a></h2>
 <p>To install the package you’ll need to use pip. To install pip on ubuntu:</p>
@@ -146,16 +149,14 @@ based on the node url in the configuration file.</p>
 </pre></div>
 </div>
 <p>To perform a single transfer from current wallet to a destination wallet.</p>
-<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>solen transfer AuMtXeRS7hws6Ktw5R6tQq3LgDYE69HwwmG9kzNniScW <span class="m">0</span>.001
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>solen token transfer AuMtXeRS7hws6Ktw5R6tQq3LgDYE69HwwmG9kzNniScW <span class="m">0</span>.001
 </pre></div>
 </div>
 <p>You can run multiple transfers in a bulk, based on input CSV file contains all the transfers data.
 The CSV should contain the following columns: wallet &amp; amount. For example:</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>solen bulk-transfer -h
-solen bulk-transfer init transfer-file-path.csv --env dev
-solen bulk-transfer run transfer-file-path.csv --dry-run --env dev
-solen bulk-transfer run transfer-file-path.csv --env dev
-solen bulk-transfer confirm transfer-file-path.csv --env dev
+solen token bulk-transfer transfer-file-path.csv --skip_confirm --env dev
+solen token bulk-transfer-status transfer-file-path.csv --env dev
 </pre></div>
 </div>
 </section>

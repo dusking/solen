@@ -14,8 +14,8 @@ Introduction
    :alt: License
    :target: https://github.com/dusking/solen/blob/main/LICENSE
 
-Solen is both CLI and a python library aim to handle the RPC commands for a Solana based Token.
-It handle Solana based token instructions and Solana NFTs instructions.
+Solen is a base Python util for Solana based token commands.
+You can use it as a CLI tool and as a python library.
 It's based on the `Solana.py package <https://github.com/michaelhly/solana-py>`_
 and on the `Solana JSON RPC <https://docs.solana.com/developing/clients/jsonrpc-api/>`_.
 
@@ -26,9 +26,11 @@ Python Library Features:
 
 CLI Features:
 
-* Balance of local wallet for SOL / Token
-* Transfer token to recipient wallet
-* Bulk token transfer to multiple recipients
+* Balance for configured token and NFTs for local wallet.
+* Transfer token to recipient wallet.
+* Bulk token transfer to multiple recipients.
+* NFT update.
+* Bulk NFT update.
 
 Suggestions and PRs welcome!
 
@@ -36,6 +38,8 @@ Suggestions and PRs welcome!
    This is experimental software for a young ecosystem.
    Use at your own risk. The author is not responsible for misuse of the software or for the user failing
    to test specific commands on devnet before using on production.
+
+See also: [the Solana tool suite](https://docs.solana.com/cli/install-solana-cli-tools), the official solana cli.
 
 .. _installation:
 
@@ -119,7 +123,7 @@ To perform a single transfer from current wallet to a destination wallet.
 .. highlight:: sh
 .. code-block:: sh
 
-   solen transfer AuMtXeRS7hws6Ktw5R6tQq3LgDYE69HwwmG9kzNniScW 0.001
+   solen token transfer AuMtXeRS7hws6Ktw5R6tQq3LgDYE69HwwmG9kzNniScW 0.001
 
 You can run multiple transfers in a bulk, based on input CSV file contains all the transfers data.
 The CSV should contain the following columns: wallet & amount. For example:
@@ -128,10 +132,8 @@ The CSV should contain the following columns: wallet & amount. For example:
 .. code-block:: sh
 
    solen bulk-transfer -h
-   solen bulk-transfer init transfer-file-path.csv --env dev
-   solen bulk-transfer run transfer-file-path.csv --dry-run --env dev
-   solen bulk-transfer run transfer-file-path.csv --env dev
-   solen bulk-transfer confirm transfer-file-path.csv --env dev
+   solen token bulk-transfer transfer-file-path.csv --skip_confirm --env dev
+   solen token bulk-transfer-status transfer-file-path.csv --env dev
 
 Usage as Library
 ----------------
