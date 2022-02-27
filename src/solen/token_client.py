@@ -1,3 +1,4 @@
+import os
 import json
 import time
 import logging
@@ -43,18 +44,23 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
         self.context = context or Context(self.env)
         self.client = self.context.client
         self.keypair = self.context.keypair
-        self.bulk_transfer_token_handler = BulkHandler(self.client,
-                                                       self.env,
-                                                       self.context.transfers_data_folder,
-                                                       partial(self.transfer_token),
-                                                       "transfer")
+        self.config_folder = self.context.config_folder
+        self.transfers_data_folder = self.config_folder.joinpath("transfers")
+        self.bulk_transfer_token_handler = BulkHandler(
+            self.client,
+            self.env,
+            self.transfers_data_folder,
+            self.transfer_token,
+            self.bulk_sum_info,
+            "transfer",
+            ["dest", "amount"],
+        )
         self.token_mint = token_mint or self.context.configured_token_mint
         self.clock_time = time.perf_counter
         self.run_start = self.clock_time()
-        self.config_folder = self.context.config_folder
-        self.transfers_data_folder = self.context.transfers_data_folder
         self.token = Token(self.client, PublicKey(self.token_mint), TOKEN_PROGRAM_ID, self.keypair)
         self.token_decimals = self.get_token_decimals()
+        os.makedirs(self.transfers_data_folder, exist_ok=True)
 
     def _set_start_time(self):
         self.run_start = self.clock_time()
@@ -113,7 +119,7 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
         return info.decimals
 
     def balance(self, owner: Optional[Union[PublicKey, str]] = None) -> int:
-        """Returns the token balance for the given wallet address. (default is keypair address)
+        """Returns the token balance for the given dest address. (default is keypair address)
 
         :param owner: The address that need to query for token balance (default is configured keypair address).
 
@@ -138,7 +144,7 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
             return 0
 
     def get_associated_address(self, owner: str, token: Optional[str] = None) -> PublicKey:
-        """Derives the associated token address for the given wallet address and token mint.
+        """Derives the associated token address for the given dest address and token mint.
 
         :param owner: The owner address that need to query for token associated address.
         :param token: The token need to query for associated address in the given address (default: configured token).
@@ -172,21 +178,22 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
     ) -> Dict:
         """Generate an instruction that transfers amount of configured token from one self account to another.
 
-        :param dest: recipient address.
-        :param amount: amountof token to transfer.
-        :param dry_run: if true the transfer will not be executed.
-        :param skip_confirmation: if true send transfer will not be coffirmed. It might be faster.
-        :param commitment: the commitment type for send transfer.
+        :param dest: Recipient address.
+        :param amount: Amountof token to transfer.
+        :param dry_run: If true the transfer will not be executed.
+        :param skip_confirmation: If true send transfer will not be coffirmed. It might be faster.
+        :param commitment: The commitment type for send transfer.
 
         >>> from solen import TokenClient
         >>> from solana.rpc.commitment import Processed
         >>> token_client = TokenClient("dev")
         >>> token_client.transfer_token("Cy4y1XGR9pj7vFikWVGrdQAPWCChqV9gQHCLht6eXBLW", 0.01, True, Processed)
         """
+        amount = float(amount)
         token = self.token_mint
         decimals = self.token_decimals
         run_start = self.clock_time()
-        response = DotDict(dest=dest, amount=amount, confirmed=False)
+        response = DotDict(dest=dest, amount=amount, confirmed=False, signature="")
         amount_lamport = int(amount * pow(10, self.token_decimals))
         logger.info(f"going to transfer {amount} ({amount_lamport} lamport) from local wallet to {dest}")
         if dry_run:
@@ -253,14 +260,52 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
     def bulk_transfer_token_init(self, csv_path: str):
         """Create the bulk transfer config based on given CSV file.
 
-        :param csv_path: Path to a csv file in the format of: wallet,amount.
+        :param csv_path: Path to a csv file in the format of: dest,amount.
         """
-        return self.bulk_transfer_token_handler.bulk_init(csv_path)
+        in_process_data = self.bulk_transfer_token_handler.bulk_init(csv_path)
+        logger.info(f"parsed {len(in_process_data)} lines of transfer commands")
+        return len(in_process_data) > 0
+
+    def bulk_sum_info(self, in_process: Dict = None, log_sum: bool = False):
+        """Log sum status for token transfer
+
+        :param in_process: Current content of the in-process json file (default taken from bulk_transfer_token_handler).
+        :param log_sum: If true the sum data will be logged (not just returned).
+        """
+        in_process = in_process or self.bulk_transfer_token_handler.in_process
+
+        total_items = len(in_process)
+        total_amount_transferred = sum(float(i["amount"]) for i in in_process.values() if i["signature"])
+        total_amount_transferred_str = f"{total_amount_transferred:,.4f}"
+        total_items_with_no_signature = sum(not i["signature"] for i in in_process.values())
+        items_with_signature_but_not_finalized = sum(not i["finalized"] for i in in_process.values() if i["signature"])
+        total_not_confirmed_to_transfer = sum(float(i["amount"]) for i in in_process.values() if not i["finalized"])
+        total_not_confirmed_to_transfer_str = f"{total_not_confirmed_to_transfer:,.4f}"
+        total_to_transfer = sum(float(i["amount"]) for i in in_process.values())
+        total_to_transfer_str = f"{total_to_transfer:,.4f}"
+        total_amount_not_transferred = sum(float(i["amount"]) for i in in_process.values() if not i["signature"])
+        total_amount_not_transferred_str = f"{total_amount_not_transferred:,.4f}"
+
+        if log_sum:
+            logger.info(
+                f"Total transferred: {total_amount_transferred_str} out of {total_to_transfer_str}."
+                f"left with amount of:  {total_amount_not_transferred_str} "
+                f"({total_items_with_no_signature} / {total_items} items)"
+            )
+
+        return dict(
+            total_items=total_items,
+            items_with_no_signature=total_items_with_no_signature,
+            items_with_signature_but_not_finalized=items_with_signature_but_not_finalized,
+            total_to_transfer=total_to_transfer_str,
+            total_amount_transferred=total_amount_transferred_str,
+            left_unconfirmed_to_transfer=total_not_confirmed_to_transfer_str,
+        )
 
     def bulk_transfer_token(self, csv_path: str, dry_run=False, skip_confirm=False):
         """Transfer token to multiple addresses, based on the content of transfer_csv_path.
 
-        :param csv_path: Path to a csv file in the format of: wallet,amount.
+        :param csv_path: Path to a csv file in the format of: dest,amount.
         :param dry_run: When true the transactions will be skipped.
         :param skip_confirm: When true transaction confirmation will be skipped. Run will be faster but less reliable.
 
@@ -268,16 +313,19 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
         >>> token_client = TokenClient("main")
         >>> token_client.bulk_transfer_token(csv_path)
         when csv should contain transfer actions data, for example:
-        wallet,amount
+        dest,amount
         Cy4y1XGR9pj7vFikWVGrdQAPWCChqV9gQHCLht6eXBLW,0.001
         Cy4y1XGR9pj7vFikWVGrdQAPWCChqV9gQHCLht6eXBLW,0.001
         """
-        return self.bulk_transfer_token_handler.bulk_run(csv_path, dry_run, skip_confirm)
+        transfer_response = self.bulk_transfer_token_handler.bulk_run(csv_path, dry_run, skip_confirm)
+        if not transfer_response.ok:
+            logger.error(f"failed to transfer, err: {transfer_response.err}")
+        return self.bulk_transfer_token_handler.sum_info()
 
     def bulk_confirm_transactions(self, csv_path: str):
         """Verify that transfer amount transaction signatures are finalized.
 
-        :param csv_path: Path to a csv file in the format of: wallet,amount.
+        :param csv_path: Path to the csv file that been processed.
         """
         self.bulk_transfer_token_handler.bulk_confirm(csv_path)
 

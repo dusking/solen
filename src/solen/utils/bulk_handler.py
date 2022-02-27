@@ -1,7 +1,7 @@
 import os
 import csv
-import time
 import json
+import time
 import logging
 from typing import Dict, List, Union, Optional
 from pathlib import Path
@@ -16,19 +16,22 @@ logger = logging.getLogger(__name__)
 open_utf8 = partial(open, encoding="UTF-8")
 
 
-class BulkHandler:
-    """Handle class for bulk Solana actions.
+class BulkHandler:  # pylint: disable=too-many-instance-attributes
+    """Handle class for bulk Solana actions."""
 
-    """
-
-    def __init__(self, client, env, data_folder, action, action_name):
+    def __init__(self, client, env, data_folder, action_callback, sum_info_callback, action_name, columns):
         self.client = client
         self.env = env
         self.clock_time = time.perf_counter
         self.data_folder = data_folder
-        self.action = action
+        self.action = action_callback
         self.action_name = action_name
+        self.sum_info = sum_info_callback
         self.run_start = self.clock_time()
+        self.columns = columns
+        self.in_process = {}
+        if not self.env:
+            raise ValueError("Missing env")
 
     def _set_start_time(self):
         self.run_start = self.clock_time()
@@ -39,95 +42,88 @@ class BulkHandler:
         return str(timedelta(seconds=elapsed_time)).split(".", maxsplit=1)[0]
 
     def process_transfer_csv(self, csv_path: str) -> Dict:
-        """Read the csv file and return dict of all the lines.
-        The line index is the key and not the wallet since wallet may exist more than once.
+        """Read the csv file and return dict of all the lines. The line index is the key.
 
-        :param csv_path: Path to a csv file in the format of: wallet,amount.
+        :param csv_path: Path to a csv file with the actions to perform.
         """
         in_process_init = {}
         with open_utf8(csv_path) as f:
             reader = csv.DictReader(f)
             for i, row in enumerate(reader):
-                in_process_init[i] = dict(
-                    wallet=row["wallet"], amount=row["amount"].replace(",", ""), finalized=False, signature="", error=""
-                )
+                row_data = {}
+                for column in self.columns:
+                    row_data[column] = row[column].replace(",", "")
+                row_data.update(finalized=False, signature="", error="")
+                in_process_init[i] = row_data
         return in_process_init
 
     def _get_in_process_json_path(self, csv_path: str) -> Path:
         """Convert csv the path to the json config file path, in the solen config folder.
 
-        :param csv_path: Path to a csv file in the format of: wallet,amount.
+        :param csv_path: Path to a csv file with the actions to perform.
         """
         csv_name = os.path.basename(csv_path)
         csv_new_suffix = csv_name.replace(".csv", ".json")
         csv_with_prefix = f"{self.env}_{csv_new_suffix}"
         return self.data_folder.joinpath(csv_with_prefix)
 
-    def bulk_init(self, csv_path: str) -> bool:
+    def bulk_init(self, csv_path: str) -> Dict:
         """Create the bulk process file based on given CSV file.
 
-        :param csv_path: Path to a csv file in the format of: wallet,amount.
+        :param csv_path: Path to a csv file with the actions to perform.
         """
+        csv_path = os.path.expanduser(csv_path)
         file_extension = os.path.splitext(csv_path)[1]
         if file_extension != ".csv":
             logger.error(f"unsupported file type: {file_extension}. expecting csv")
-            return False
+            return {}
         if not os.path.exists(csv_path):
             logger.error(f"missing file: {csv_path}")
-            return False
+            return {}
         in_process_file = self._get_in_process_json_path(csv_path)
         if in_process_file.exists():
-            in_process = json.loads(in_process_file.read_text(encoding="utf-8"))
-            left_items = sum(not i["signature"] for i in in_process.values())
-            total_left_to_run = sum(float(i["amount"]) for i in in_process.values() if not i["signature"])
-            total_left_to_run_str = f"{total_left_to_run:,.4f}"
-            logger.info(
-                f"process config file: {in_process_file}. "
-                f"left records: {left_items}, left to handle: {total_left_to_run_str}"
-            )
-            return True
+            logger.info(f"process config file: {in_process_file}")
+            self.in_process = json.loads(in_process_file.read_text(encoding="utf-8"))
+            self.sum_info(self.in_process, log_sum=True)
+            return self.in_process
         logger.info(f"going to create bulk process file based on file: {csv_path}")
         in_process_init = self.process_transfer_csv(csv_path)
         in_process_file.write_text(json.dumps(in_process_init), encoding="utf-8")
-        in_process = json.loads(in_process_file.read_text(encoding="utf-8"))
-        total_left_to_run = sum(float(i["amount"]) for i in in_process.values())
-        total_left_to_run_str = f"{total_left_to_run:,.4f}"
-        logger.info(
-            f"process config file been created: {in_process_file} "
-            f"(total records: {len(in_process)}, total actions: {total_left_to_run_str})"
-        )
-        return True
+        logger.info(f"process config file been created: {in_process_file}")
+        self.in_process = json.loads(in_process_file.read_text(encoding="utf-8"))
+        self.sum_info(self.in_process, log_sum=True)
+        return self.in_process
 
-    def bulk_run(self, csv_path: str, dry_run=False, skip_confirm=False):
+    def bulk_run(self, csv_path: str, dry_run: bool = False, skip_confirm: bool = False):
         """Transfer token to multiple addresses, based on the content of transfer_csv_path.
 
-        :param csv_path: Path to a csv file in the format of: wallet,amount.
+        :param csv_path: Path to a csv file to process.
         :param dry_run: When true the transactions will be skipped.
         :param skip_confirm: When true transaction confirmation will be skipped. Run will be faster but less reliable.
 
         when csv should contain action data, that can be parsed by the actions function.
         """
-        logger.info(f"going to run actions based on file: {csv_path}")
+        response = DotDict(csv_path=csv_path, dry_run=dry_run, skip_confirm=skip_confirm)
+        csv_path = os.path.expanduser(csv_path)
+        logger.info(f"going to run actions based on file: {csv_path} (dry_run: {dry_run})")
         run_start = self.clock_time()
         file_extension = os.path.splitext(csv_path)[1]
         if file_extension != ".csv":
-            logger.error(f"unsupported file type: {file_extension}. expecting csv")
-            return
+            logger.error(f"unsupported file type: {file_extension}, expecting csv.")
+            return response.update(ok=False, err=f"unsupported file type: {file_extension}, expecting csv.")
         if not os.path.exists(csv_path):
             logger.error(f"missing file: {csv_path}")
-            return
+            return response.update(ok=False, err=f"missing file: {csv_path}")
         in_process_file = self._get_in_process_json_path(csv_path)
         if not in_process_file.exists():
-            logger.error(
-                f"missing transfer config file: ({in_process_file}). run bulk-transfer init command to create it"
-            )
-            return
-        in_process = json.loads(in_process_file.read_text(encoding="utf-8"))
-        total_items = len(in_process)
-        left_items = sum(not i["signature"] for i in in_process.values())
+            logger.error(f"missing json config file: ({in_process_file}). run bulk-transfer init command to create it")
+            return response.update(ok=False, err=f"missing json config file: ({in_process_file}).")
+        self.in_process = json.loads(in_process_file.read_text(encoding="utf-8"))
+        total_items = len(self.in_process)
+        left_items = sum(not i["signature"] for i in self.in_process.values())
         logger.info(f"going to handle {left_items} out of {total_items} actions")
         counter = 0
-        for i, item in in_process.items():
+        for i, item in self.in_process.items():
             if item.get("signature"):
                 continue
             counter += 1
@@ -135,7 +131,9 @@ class BulkHandler:
             logger.info(
                 f"[{i}] [{self._elapsed_time()}] handle {self.action_name} {counter}/{left_items}, current balance: "
             )
-            transfer_args = DotDict(dest=item["wallet"], amount=float(item["amount"]), dry_run=dry_run)
+            transfer_args = DotDict(dry_run=dry_run)
+            for column in self.columns:
+                transfer_args[column] = item[column]
             if skip_confirm:
                 transfer_args.skip_confirmation = True
                 transfer_args.commitment = Processed
@@ -143,42 +141,38 @@ class BulkHandler:
             if dry_run:
                 continue
             if not response.ok:
-                in_process[i].update({"error": response.err, "time": response.time})
+                self.in_process[i].update({"error": response.err, "time": response.time})
                 if "Node is behind by" in response.err:
                     # When this error occurs (like "RPC error: Node is behind by 169 slots")
                     # it'll take at least a sec to start working again. keep trying will keep failing
                     time.sleep(1)
             else:
-                in_process[i].update({"signature": response.signature, "error": "", "time": response.time})
-            in_process_file.write_text(json.dumps(in_process), encoding="utf-8")
-        total_transferred = sum(float(i["amount"]) for i in in_process.values() if i["signature"])
-        total_not_transferred = sum(float(i["amount"]) for i in in_process.values() if not i["signature"])
-        total_transferred_str = f"{total_transferred:,.4f}"
-        total_not_transferred_str = f"{total_not_transferred:,.4f}"
-        logger.info(
-            f"Bulk run completed after {self._elapsed_time(run_start)}. total transferred: {total_transferred_str}, "
-            f"total not transferred: {total_not_transferred_str} (unverified)"
-        )
+                self.in_process[i].update({"signature": response.signature, "error": "", "time": response.time})
+            in_process_file.write_text(json.dumps(self.in_process), encoding="utf-8")
+        logger.info(f"Bulk run completed after {self._elapsed_time(run_start)}.")
+        self.in_process = json.loads(in_process_file.read_text(encoding="utf-8"))
+        return response.update(ok=True)
 
     def bulk_confirm(self, csv_path: str):
         """Verify that transfer amount transaction signatures are finalized.
 
         :param csv_path: Path to a csv file in the format of: wallet,amount.
         """
+        csv_path = os.path.expanduser(csv_path)
         run_start = self.clock_time()
         in_process_file = self._get_in_process_json_path(csv_path)
         if not in_process_file.exists():
             logger.error(f"missing in-process file: ({in_process_file})")
             return
-        in_process = json.loads(in_process_file.read_text(encoding="utf-8"))
-        total_items = len(in_process)
-        left_items = sum(not i["finalized"] for i in in_process.values())
+        self.in_process = json.loads(in_process_file.read_text(encoding="utf-8"))
+        total_items = len(self.in_process)
+        left_items = sum(not i["finalized"] for i in self.in_process.values())
         logger.info(f"going to confirm {left_items} left not verified, out of {total_items} records")
 
         asyncit = Asyncit(
             save_output=True, save_as_json=True, pool_size=200, rate_limit=[{"period_sec": 5, "max_calls": 100}]
         )
-        for i, item in in_process.items():
+        for i, item in self.in_process.items():
             if not item.get("signature"):
                 continue
             if item.get("finalized"):
@@ -190,20 +184,20 @@ class BulkHandler:
             logger.info("nothing to update in process file")
             return
         for result in confirm_result:
-            in_process[result["index"]]["finalized"] = result["confirmed"]
-        in_process_file.write_text(json.dumps(in_process), encoding="utf-8")
-        total_finalized = sum(i["finalized"] for i in in_process.values())
+            self.in_process[result["index"]]["finalized"] = result["confirmed"]
+        in_process_file.write_text(json.dumps(self.in_process), encoding="utf-8")
+        total_finalized = sum(i["finalized"] for i in self.in_process.values())
         logger.info(
-            f"Done after {self._elapsed_time(run_start)}. total finalized: {total_finalized} / {len(in_process)}"
+            f"Done after {self._elapsed_time(run_start)}. total finalized: {total_finalized} / {len(self.in_process)}"
         )
 
     def confirm_transaction(
-            self,
-            tx_sig: str,
-            commitment: Commitment = Finalized,
-            sleep_seconds: float = 1.0,
-            response_extra: Optional[Dict] = None,
-            timeout: Optional[int] = 30,
+        self,
+        tx_sig: str,
+        commitment: Commitment = Finalized,
+        sleep_seconds: float = 1.0,
+        response_extra: Optional[Dict] = None,
+        timeout: Optional[int] = 30,
     ) -> Dict:
         """Confirm the transaction identified by the specified signature.
 
@@ -252,23 +246,11 @@ class BulkHandler:
 
         :param csv_path: Path to a csv file to retrieve transfer data for.
         """
+        csv_path = os.path.expanduser(csv_path)
         in_process_file = self._get_in_process_json_path(csv_path)
         response = DotDict(cav_path=csv_path, json_path=str(in_process_file))
         if not in_process_file.exists():
             logger.error(f"missing in-process file: ({in_process_file})")
             return response.update(err="missing json file")
-        in_process = json.loads(in_process_file.read_text(encoding="utf-8"))
-        total_items = len(in_process)
-        items_with_no_signature = sum(not i["signature"] for i in in_process.values())
-        items_with_signature_but_not_finalized = sum(not i["finalized"] for i in in_process.values() if i["signature"])
-        total_not_confirmed_to_transfer = sum(float(i["amount"]) for i in in_process.values() if not i["finalized"])
-        total_not_confirmed_to_transfer_str = f"{total_not_confirmed_to_transfer:,.4f}"
-        total_to_transfer = sum(float(i["amount"]) for i in in_process.values())
-        total_to_transfer_str = f"{total_to_transfer:,.4f}"
-        return response.update(
-            total_items=total_items,
-            items_with_no_signature=items_with_no_signature,
-            items_with_signature_but_not_finalized=items_with_signature_but_not_finalized,
-            total_to_transfer=total_to_transfer_str,
-            left_unconfirmed_to_transfer=total_not_confirmed_to_transfer_str,
-        )
+        self.in_process = json.loads(in_process_file.read_text(encoding="utf-8"))
+        return self.sum_info(self.in_process)
