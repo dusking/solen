@@ -66,12 +66,14 @@
            <div itemprop="articleBody">
              
   <h1>Source code for solen.nft_client</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span> <span class="nn">json</span>
+<span></span><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">time</span>
 <span class="kn">import</span> <span class="nn">base64</span>
 <span class="kn">import</span> <span class="nn">struct</span>
 <span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Optional</span>
-<span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
 
 <span class="kn">import</span> <span class="nn">base58</span>
 <span class="kn">from</span> <span class="nn">asyncit</span> <span class="kn">import</span> <span class="n">Asyncit</span>
@@ -87,11 +89,12 @@
 <span class="kn">from</span> <span class="nn">.core.errors</span> <span class="kn">import</span> <span class="n">token_metadata_errors</span>
 <span class="kn">from</span> <span class="nn">.core.metadata</span> <span class="kn">import</span> <span class="n">Metadata</span>
 <span class="kn">from</span> <span class="nn">.core.transactions</span> <span class="kn">import</span> <span class="n">Transactions</span>
+<span class="kn">from</span> <span class="nn">.utils.bulk_handler</span> <span class="kn">import</span> <span class="n">BulkHandler</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
 
-<div class="viewcode-block" id="NFTClient"><a class="viewcode-back" href="../../solen.html#solen.nft_client.NFTClient">[docs]</a><span class="k">class</span> <span class="nc">NFTClient</span><span class="p">:</span>
+<div class="viewcode-block" id="NFTClient"><a class="viewcode-back" href="../../solen.html#solen.nft_client.NFTClient">[docs]</a><span class="k">class</span> <span class="nc">NFTClient</span><span class="p">:</span>  <span class="c1"># pylint: disable=too-many-instance-attributes</span>
     <span class="sd">&quot;&quot;&quot;NFT Client class.</span>
 
 <span class="sd">    :param env: The Solana env (options are based on the config file)</span>
@@ -103,12 +106,37 @@
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">Context</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Init NFT Client.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="n">env</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">context</span> <span class="o">=</span> <span class="n">context</span> <span class="ow">or</span> <span class="n">Context</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">client</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">client</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">keypair</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">keypair</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config_folder</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">config_folder</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transfers_data_folder</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_folder</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="s2">&quot;transfers&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">updates_data_folder</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_folder</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="s2">&quot;updates&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bulk_update_nft_handler</span> <span class="o">=</span> <span class="n">BulkHandler</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">updates_data_folder</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">update_token_metadata</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">bulk_sum_info</span><span class="p">,</span>
+            <span class="s2">&quot;update&quot;</span><span class="p">,</span>
+            <span class="p">[</span><span class="s2">&quot;mint_address&quot;</span><span class="p">],</span>
+        <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">rpc_endpoint</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">rpc_endpoint</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span> <span class="o">=</span> <span class="n">Metadata</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">transaction</span> <span class="o">=</span> <span class="n">Transactions</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">clock_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">run_start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clock_time</span><span class="p">()</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">transfers_data_folder</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">updates_data_folder</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_set_start_time</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">run_start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clock_time</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_elapsed_time</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_start</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">run_start</span> <span class="o">=</span> <span class="n">run_start</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_start</span>
+        <span class="n">elapsed_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clock_time</span><span class="p">()</span> <span class="o">-</span> <span class="n">run_start</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="n">elapsed_time</span><span class="p">))</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">,</span> <span class="n">maxsplit</span><span class="o">=</span><span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
 
 <div class="viewcode-block" id="NFTClient.get_data"><a class="viewcode-back" href="../../solen.html#solen.nft_client.NFTClient.get_data">[docs]</a>    <span class="k">def</span> <span class="nf">get_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mint_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">sort_creators_by_share</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Get the NFT On-Chain data. The creators data returned sorted by share.</span>
@@ -163,8 +191,9 @@
 <span class="sd">        &gt;&gt;&gt; metadata = nft_client.nft.bulk_get_data([&quot;DAysz5tmEMQBhXgcQHXrhQaF3rGwVw3LKoj5vMHY9vxM&quot;,</span>
 <span class="sd">        &gt;&gt;&gt;                                          &quot;7Sde2VNGTcHv5wmgrYTvGW9h8Umiob5MdTq6Y7BuTw7h&quot;])</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">asyncit</span> <span class="o">=</span> <span class="n">Asyncit</span><span class="p">(</span><span class="n">save_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">save_as_json</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">pool_size</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
-                          <span class="n">rate_limit</span><span class="o">=</span><span class="p">[{</span><span class="s2">&quot;period_sec&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span> <span class="s2">&quot;max_calls&quot;</span><span class="p">:</span> <span class="mi">200</span><span class="p">}])</span>
+        <span class="n">asyncit</span> <span class="o">=</span> <span class="n">Asyncit</span><span class="p">(</span>
+            <span class="n">save_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">save_as_json</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">pool_size</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">rate_limit</span><span class="o">=</span><span class="p">[{</span><span class="s2">&quot;period_sec&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span> <span class="s2">&quot;max_calls&quot;</span><span class="p">:</span> <span class="mi">200</span><span class="p">}]</span>
+        <span class="p">)</span>
         <span class="k">for</span> <span class="n">mint_key</span> <span class="ow">in</span> <span class="n">mint_key_list</span><span class="p">:</span>
             <span class="n">asyncit</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_data</span><span class="p">,</span> <span class="n">mint_key</span><span class="p">,</span> <span class="n">sort_creators_by_share</span><span class="p">)</span>
         <span class="n">asyncit</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
@@ -293,12 +322,27 @@
         <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_token_accounts_by_owner</span><span class="p">(</span><span class="n">PublicKey</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">owner</span><span class="p">)),</span> <span class="n">opt</span><span class="p">,</span> <span class="n">commitment</span><span class="p">)</span>
         <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_parse_token_value</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">response</span><span class="p">[</span><span class="s2">&quot;result&quot;</span><span class="p">][</span><span class="s2">&quot;value&quot;</span><span class="p">]]</span></div>
 
-<div class="viewcode-block" id="NFTClient.update_token_metadata"><a class="viewcode-back" href="../../solen.html#solen.nft_client.NFTClient.update_token_metadata">[docs]</a>    <span class="k">def</span> <span class="nf">update_token_metadata</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">mint_address</span><span class="p">,</span> <span class="n">max_retries</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">skip_confirmation</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">max_timeout</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">finalized</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
+<div class="viewcode-block" id="NFTClient.update_token_metadata"><a class="viewcode-back" href="../../solen.html#solen.nft_client.NFTClient.update_token_metadata">[docs]</a>    <span class="k">def</span> <span class="nf">update_token_metadata</span><span class="p">(</span>  <span class="c1"># pylint: disable=too-many-return-statements</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">mint_address</span><span class="p">,</span>
+        <span class="n">max_retries</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">skip_confirmation</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">max_timeout</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span>
+        <span class="n">target</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+        <span class="n">finalized</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">dry_run</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Updates the metadata for a given NFT.</span>
 
 <span class="sd">        :param mint_address: The NFT mint address.</span>
+<span class="sd">        :param max_retries: Mac retry attempts of send_transaction in case of failure.</span>
+<span class="sd">        :param skip_confirmation: If true send transfer will not be coffirmed. It might be faster.</span>
+<span class="sd">        :param max_timeout: Max timeout for transaction confirmation. Not used if skip_confirmation is True.</span>
+<span class="sd">        :param target: Target for confirmations transaction confirmation. Not used if skip_confirmation is True.</span>
+<span class="sd">        :param finalized: If true transaction confirmed only if it has status Finalized, else target is used</span>
+<span class="sd">            to confirm transaction.</span>
+<span class="sd">        :param dry_run: If true the transfer will not be executed.</span>
 <span class="sd">        :param kwargs: The data that need to be changed. Options are: uri, name, symbol, fee, creators</span>
 
 <span class="sd">        * uri : str</span>
@@ -319,14 +363,18 @@
 <span class="sd">        In case os an error, the signature will be in response.err,</span>
 <span class="sd">        In case os succefull update, the signature will be in response.ok.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">run_start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clock_time</span><span class="p">()</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">v</span><span class="p">}</span>  <span class="c1"># remove keys with None value</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">DotDict</span><span class="p">(</span><span class="n">mint_address</span><span class="o">=</span><span class="n">mint_address</span><span class="p">,</span> <span class="n">confirmed</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">signature</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="n">new_creators</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;creators&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">new_creators</span><span class="p">:</span>
             <span class="n">creators_addresses</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span><span class="p">[</span><span class="s2">&quot;address&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">new_creators</span><span class="p">]</span>
             <span class="n">creators_verified</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span><span class="p">[</span><span class="s2">&quot;verified&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">new_creators</span><span class="p">]</span>
             <span class="n">creators_share</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span><span class="p">[</span><span class="s2">&quot;share&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">new_creators</span><span class="p">]</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">creators_addresses</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">creators_verified</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">creators_share</span><span class="p">):</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;update token failed, bad creators data: </span><span class="si">{</span><span class="n">new_creators</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                <span class="k">return</span> <span class="n">Err</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="n">err_msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;update token failed, bad creators data: </span><span class="si">{</span><span class="n">new_creators</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">err_msg</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">err</span><span class="o">=</span><span class="n">err_msg</span><span class="p">,</span> <span class="n">ok</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_elapsed_time</span><span class="p">(</span><span class="n">run_start</span><span class="p">))</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">creators_addresses</span> <span class="o">=</span> <span class="n">creators_verified</span> <span class="o">=</span> <span class="n">creators_share</span> <span class="o">=</span> <span class="kc">None</span>
 
@@ -343,7 +391,9 @@
             <span class="n">creators_verified</span><span class="o">=</span><span class="n">creators_verified</span> <span class="ow">or</span> <span class="nb">list</span><span class="p">(</span><span class="n">current_data</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">verified</span><span class="p">),</span>
             <span class="n">creators_share</span><span class="o">=</span><span class="n">creators_share</span> <span class="ow">or</span> <span class="nb">list</span><span class="p">(</span><span class="n">current_data</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">share</span><span class="p">),</span>
         <span class="p">)</span>
-        <span class="c1"># return data</span>
+        <span class="k">if</span> <span class="n">dry_run</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;dry-run. data: </span><span class="si">{</span><span class="n">data</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">signature</span><span class="o">=</span><span class="s2">&quot;test-run&quot;</span><span class="p">,</span> <span class="n">ok</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_elapsed_time</span><span class="p">(</span><span class="n">run_start</span><span class="p">))</span>
         <span class="n">tx</span><span class="p">,</span> <span class="n">signers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transaction</span><span class="o">.</span><span class="n">create_update_token_metadata_tx</span><span class="p">(</span><span class="o">**</span><span class="n">data</span><span class="p">)</span>
         <span class="n">resp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transaction</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">rpc_endpoint</span><span class="p">,</span>
@@ -356,15 +406,19 @@
             <span class="n">finalized</span><span class="o">=</span><span class="n">finalized</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">resp</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;failed to execute transaction&quot;</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">Err</span><span class="p">(</span><span class="s2">&quot;failed to execute transaction&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">err</span><span class="o">=</span><span class="s2">&quot;failed to execute transaction&quot;</span><span class="p">,</span> <span class="n">ok</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_elapsed_time</span><span class="p">(</span><span class="n">run_start</span><span class="p">))</span>
         <span class="n">transaction_signature</span> <span class="o">=</span> <span class="n">resp</span><span class="p">[</span><span class="s2">&quot;result&quot;</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">skip_confirmation</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">Ok</span><span class="p">(</span><span class="n">transaction_signature</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">signature</span><span class="o">=</span><span class="n">transaction_signature</span><span class="p">,</span> <span class="n">ok</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_elapsed_time</span><span class="p">(</span><span class="n">run_start</span><span class="p">))</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;going to verify update transaction signature: </span><span class="si">{</span><span class="n">transaction_signature</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="n">transaction_data</span> <span class="o">=</span> <span class="n">DotDict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_transaction_data</span><span class="p">(</span><span class="n">transaction_signature</span><span class="p">))</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">transaction_data</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">Err</span><span class="p">(</span><span class="n">transaction_signature</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+                <span class="n">signature</span><span class="o">=</span><span class="n">transaction_signature</span><span class="p">,</span>
+                <span class="n">err</span><span class="o">=</span><span class="s2">&quot;failed to get transaction data&quot;</span><span class="p">,</span>
+                <span class="n">ok</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">time</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_elapsed_time</span><span class="p">(</span><span class="n">run_start</span><span class="p">),</span>
+            <span class="p">)</span>
         <span class="k">if</span> <span class="n">transaction_data</span><span class="o">.</span><span class="n">status</span><span class="o">.</span><span class="n">Err</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">transaction_data</span><span class="o">.</span><span class="n">logMessages</span><span class="p">))</span>
             <span class="n">err_code</span> <span class="o">=</span> <span class="kc">None</span>
@@ -372,11 +426,94 @@
                 <span class="k">if</span> <span class="s2">&quot;custom program error:&quot;</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
                     <span class="n">err_code</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
                     <span class="n">err_code</span> <span class="o">=</span> <span class="n">err_code</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;x&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-            <span class="n">err_message</span> <span class="o">=</span> <span class="n">token_metadata_errors</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">err_code</span><span class="p">)</span> <span class="k">if</span> <span class="n">err_code</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;failed to update token data, </span><span class="si">{</span><span class="n">err_message</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">Err</span><span class="p">(</span><span class="n">transaction_signature</span><span class="p">)</span>
+            <span class="n">err_code_message_decode</span> <span class="o">=</span> <span class="n">token_metadata_errors</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">err_code</span><span class="p">)</span> <span class="k">if</span> <span class="n">err_code</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+            <span class="n">msg_message</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;failed to update token data, </span><span class="si">{</span><span class="n">err_code_message_decode</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg_message</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+                <span class="n">signature</span><span class="o">=</span><span class="n">transaction_signature</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="n">msg_message</span><span class="p">,</span> <span class="n">ok</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_elapsed_time</span><span class="p">(</span><span class="n">run_start</span><span class="p">)</span>
+            <span class="p">)</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;update been verified&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">Ok</span><span class="p">(</span><span class="n">transaction_signature</span><span class="p">)</span></div></div>
+        <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+            <span class="n">signature</span><span class="o">=</span><span class="n">transaction_signature</span><span class="p">,</span> <span class="n">ok</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">confirmed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_elapsed_time</span><span class="p">(</span><span class="n">run_start</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="NFTClient.bulk_update_init"><a class="viewcode-back" href="../../solen.html#solen.nft_client.NFTClient.bulk_update_init">[docs]</a>    <span class="k">def</span> <span class="nf">bulk_update_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">csv_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Create the bulk update config based on given CSV file.</span>
+
+<span class="sd">        :param csv_path: Path to a csv file in the format of: wallet,amount.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">csv_path</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;UTF-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">first_line</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readlines</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">columns</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">first_line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)}</span>
+        <span class="n">optional_nft_update_key</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;uri&quot;</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;symbol&quot;</span><span class="p">,</span> <span class="s2">&quot;fee&quot;</span><span class="p">,</span> <span class="s2">&quot;creators&quot;</span><span class="p">}</span>
+        <span class="n">exiting_nft_update_columns</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">columns</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="n">optional_nft_update_key</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bulk_update_nft_handler</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;mint_address&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">exiting_nft_update_columns</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;updating attributes: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">bulk_update_nft_handler</span><span class="o">.</span><span class="n">columns</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">in_process_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bulk_update_nft_handler</span><span class="o">.</span><span class="n">bulk_init</span><span class="p">(</span><span class="n">csv_path</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;parsed </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">in_process_data</span><span class="p">)</span><span class="si">}</span><span class="s2"> lines of update commands&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">in_process_data</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span></div>
+
+<div class="viewcode-block" id="NFTClient.bulk_sum_info"><a class="viewcode-back" href="../../solen.html#solen.nft_client.NFTClient.bulk_sum_info">[docs]</a>    <span class="k">def</span> <span class="nf">bulk_sum_info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">in_process</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">log_sum</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Log sum status for</span>
+
+<span class="sd">        :param in_process: Current content of the in-process json file (default taken from bulk_update_nft_handler).</span>
+<span class="sd">        :param log_sum: If true the sum data will be logged (not just returned).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">in_process</span> <span class="o">=</span> <span class="n">in_process</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">bulk_update_nft_handler</span><span class="o">.</span><span class="n">in_process</span>
+
+        <span class="n">total_items</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">in_process</span><span class="p">)</span>
+        <span class="n">total_items_with_no_signature</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="ow">not</span> <span class="n">i</span><span class="p">[</span><span class="s2">&quot;signature&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">in_process</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+        <span class="n">items_with_signature_but_not_finalized</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="ow">not</span> <span class="n">i</span><span class="p">[</span><span class="s2">&quot;finalized&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">in_process</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">if</span> <span class="n">i</span><span class="p">[</span><span class="s2">&quot;signature&quot;</span><span class="p">])</span>
+        <span class="n">total_finalized</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">i</span><span class="p">[</span><span class="s2">&quot;finalized&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">in_process</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+
+        <span class="k">if</span> <span class="n">log_sum</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Total updated: </span><span class="si">{</span><span class="n">total_items</span> <span class="o">-</span> <span class="n">total_items_with_no_signature</span><span class="si">}</span><span class="s2"> out of </span><span class="si">{</span><span class="n">total_items</span><span class="si">}</span><span class="s2"> items. &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Items with signature but not finalized: </span><span class="si">{</span><span class="n">items_with_signature_but_not_finalized</span><span class="si">}</span><span class="s2">. &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Total finalized: </span><span class="si">{</span><span class="n">total_finalized</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span>
+            <span class="n">total_items</span><span class="o">=</span><span class="n">total_items</span><span class="p">,</span>
+            <span class="n">items_with_no_signature</span><span class="o">=</span><span class="n">total_items_with_no_signature</span><span class="p">,</span>
+            <span class="n">items_with_signature_but_not_finalized</span><span class="o">=</span><span class="n">items_with_signature_but_not_finalized</span><span class="p">,</span>
+            <span class="n">total_finalized</span><span class="o">=</span><span class="n">total_finalized</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="NFTClient.bulk_update_nft"><a class="viewcode-back" href="../../solen.html#solen.nft_client.NFTClient.bulk_update_nft">[docs]</a>    <span class="k">def</span> <span class="nf">bulk_update_nft</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">csv_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">dry_run</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">skip_confirm</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Update multiple NFTs, based on the content of transfer_csv_path.</span>
+
+<span class="sd">        :param csv_path: Path to a csv file in the format of: mint_address,VALUE_TO_UPDATE. Options for</span>
+<span class="sd">            value to update: symbol, name, uri</span>
+<span class="sd">        :param dry_run: When true the transactions will be skipped.</span>
+<span class="sd">        :param skip_confirm: When true transaction confirmation will be skipped. Run will be faster but less reliable.</span>
+
+<span class="sd">        &gt;&gt;&gt; from solen import NFTClient</span>
+<span class="sd">        &gt;&gt;&gt; token_client = NFTClient(&quot;dev&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; token_client.bulk_update_nft(csv_path)</span>
+<span class="sd">        when csv should contain update actions data, for example:</span>
+<span class="sd">        mint_address,symbol</span>
+<span class="sd">        Cy4y1XGR9pj7vFikWVGrdQAPWCChqV9gQHCLht6eXBLW,MQA</span>
+<span class="sd">        Cy4y1XGR9pj7vFikWVGrdQAPWCChqV9gQHCLht6eXBLW,MQA</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">update_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bulk_update_nft_handler</span><span class="o">.</span><span class="n">bulk_run</span><span class="p">(</span><span class="n">csv_path</span><span class="p">,</span> <span class="n">dry_run</span><span class="p">,</span> <span class="n">skip_confirm</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">update_response</span><span class="o">.</span><span class="n">ok</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;failed to update nfts, err: </span><span class="si">{</span><span class="n">update_response</span><span class="o">.</span><span class="n">err</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">bulk_update_nft_handler</span><span class="o">.</span><span class="n">sum_info</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="NFTClient.bulk_confirm_transactions"><a class="viewcode-back" href="../../solen.html#solen.nft_client.NFTClient.bulk_confirm_transactions">[docs]</a>    <span class="k">def</span> <span class="nf">bulk_confirm_transactions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">csv_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Verify that update transaction signatures are finalized.</span>
+
+<span class="sd">        :param csv_path: Path to the csv file that been processed.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bulk_update_nft_handler</span><span class="o">.</span><span class="n">bulk_confirm</span><span class="p">(</span><span class="n">csv_path</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="NFTClient.get_update_status"><a class="viewcode-back" href="../../solen.html#solen.nft_client.NFTClient.get_update_status">[docs]</a>    <span class="k">def</span> <span class="nf">get_update_status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">csv_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get update status for a given update csv file.</span>
+
+<span class="sd">        :param csv_path: Path to a csv file to retrieve update data for.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">bulk_update_nft_handler</span><span class="o">.</span><span class="n">bulk_status</span><span class="p">(</span><span class="n">csv_path</span><span class="p">)</span></div></div>
 </pre></div>
 
            </div>

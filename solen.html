@@ -118,6 +118,17 @@ the RPC endpoint will be:<cite>https://api.devnet.solana.com</cite></p>
 For example, using the <a class="reference internal" href="index.html#config-file"><span class="std std-ref">config file</span></a> in the example and “dev” parameter,
 the RPC endpoint will be:<cite>https://api.devnet.solana.com</cite></p>
 <dl class="py method">
+<dt class="sig sig-object py" id="solen.nft_client.NFTClient.bulk_confirm_transactions">
+<span class="sig-name descname"><span class="pre">bulk_confirm_transactions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">csv_path</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/solen/nft_client.html#NFTClient.bulk_confirm_transactions"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.nft_client.NFTClient.bulk_confirm_transactions" title="Permalink to this definition"></a></dt>
+<dd><p>Verify that update transaction signatures are finalized.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>csv_path</strong> – Path to the csv file that been processed.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="solen.nft_client.NFTClient.bulk_get_data">
 <span class="sig-name descname"><span class="pre">bulk_get_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mint_key_list</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sort_creators_by_share</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/solen/nft_client.html#NFTClient.bulk_get_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.nft_client.NFTClient.bulk_get_data" title="Permalink to this definition"></a></dt>
 <dd><p>Bulk call to get_data function, to get the NFT On-Chain data of nfts in the input list.</p>
@@ -134,6 +145,56 @@ by the share amount - the highest first (default: true).</p></li>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">nft_client</span> <span class="o">=</span> <span class="n">NFTClient</span><span class="p">(</span><span class="s2">&quot;main&quot;</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">metadata</span> <span class="o">=</span> <span class="n">nft_client</span><span class="o">.</span><span class="n">nft</span><span class="o">.</span><span class="n">bulk_get_data</span><span class="p">([</span><span class="s2">&quot;DAysz5tmEMQBhXgcQHXrhQaF3rGwVw3LKoj5vMHY9vxM&quot;</span><span class="p">,</span>
 <span class="gp">&gt;&gt;&gt; </span>                                         <span class="s2">&quot;7Sde2VNGTcHv5wmgrYTvGW9h8Umiob5MdTq6Y7BuTw7h&quot;</span><span class="p">])</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="solen.nft_client.NFTClient.bulk_sum_info">
+<span class="sig-name descname"><span class="pre">bulk_sum_info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">in_process</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_sum</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/solen/nft_client.html#NFTClient.bulk_sum_info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.nft_client.NFTClient.bulk_sum_info" title="Permalink to this definition"></a></dt>
+<dd><p>Log sum status for</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>in_process</strong> – Current content of the in-process json file (default taken from bulk_update_nft_handler).</p></li>
+<li><p><strong>log_sum</strong> – If true the sum data will be logged (not just returned).</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="solen.nft_client.NFTClient.bulk_update_init">
+<span class="sig-name descname"><span class="pre">bulk_update_init</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">csv_path</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/solen/nft_client.html#NFTClient.bulk_update_init"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.nft_client.NFTClient.bulk_update_init" title="Permalink to this definition"></a></dt>
+<dd><p>Create the bulk update config based on given CSV file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>csv_path</strong> – Path to a csv file in the format of: wallet,amount.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="solen.nft_client.NFTClient.bulk_update_nft">
+<span class="sig-name descname"><span class="pre">bulk_update_nft</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">csv_path</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dry_run</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip_confirm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/solen/nft_client.html#NFTClient.bulk_update_nft"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.nft_client.NFTClient.bulk_update_nft" title="Permalink to this definition"></a></dt>
+<dd><p>Update multiple NFTs, based on the content of transfer_csv_path.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>csv_path</strong> – Path to a csv file in the format of: mint_address,VALUE_TO_UPDATE. Options for
+value to update: symbol, name, uri</p></li>
+<li><p><strong>dry_run</strong> – When true the transactions will be skipped.</p></li>
+<li><p><strong>skip_confirm</strong> – When true transaction confirmation will be skipped. Run will be faster but less reliable.</p></li>
+</ul>
+</dd>
+</dl>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">solen</span> <span class="kn">import</span> <span class="n">NFTClient</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">token_client</span> <span class="o">=</span> <span class="n">NFTClient</span><span class="p">(</span><span class="s2">&quot;dev&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">token_client</span><span class="o">.</span><span class="n">bulk_update_nft</span><span class="p">(</span><span class="n">csv_path</span><span class="p">)</span>
+<span class="go">when csv should contain update actions data, for example:</span>
+<span class="go">mint_address,symbol</span>
+<span class="go">Cy4y1XGR9pj7vFikWVGrdQAPWCChqV9gQHCLht6eXBLW,MQA</span>
+<span class="go">Cy4y1XGR9pj7vFikWVGrdQAPWCChqV9gQHCLht6eXBLW,MQA</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -287,13 +348,31 @@ To get the owners need to use get_historical_holders_owners.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="solen.nft_client.NFTClient.get_update_status">
+<span class="sig-name descname"><span class="pre">get_update_status</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">csv_path</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/solen/nft_client.html#NFTClient.get_update_status"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.nft_client.NFTClient.get_update_status" title="Permalink to this definition"></a></dt>
+<dd><p>Get update status for a given update csv file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>csv_path</strong> – Path to a csv file to retrieve update data for.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="solen.nft_client.NFTClient.update_token_metadata">
-<span class="sig-name descname"><span class="pre">update_token_metadata</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mint_address</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_retries</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip_confirmation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">60</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">finalized</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">solen.response.Response</span></span></span><a class="reference internal" href="_modules/solen/nft_client.html#NFTClient.update_token_metadata"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.nft_client.NFTClient.update_token_metadata" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">update_token_metadata</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mint_address</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_retries</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip_confirmation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">60</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">finalized</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dry_run</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span></span></span><a class="reference internal" href="_modules/solen/nft_client.html#NFTClient.update_token_metadata"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.nft_client.NFTClient.update_token_metadata" title="Permalink to this definition"></a></dt>
 <dd><p>Updates the metadata for a given NFT.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>mint_address</strong> – The NFT mint address.</p></li>
+<li><p><strong>max_retries</strong> – Mac retry attempts of send_transaction in case of failure.</p></li>
+<li><p><strong>skip_confirmation</strong> – If true send transfer will not be coffirmed. It might be faster.</p></li>
+<li><p><strong>max_timeout</strong> – Max timeout for transaction confirmation. Not used if skip_confirmation is True.</p></li>
+<li><p><strong>target</strong> – Target for confirmations transaction confirmation. Not used if skip_confirmation is True.</p></li>
+<li><p><strong>finalized</strong> – If true transaction confirmed only if it has status Finalized, else target is used
+to confirm transaction.</p></li>
+<li><p><strong>dry_run</strong> – If true the transfer will not be executed.</p></li>
 <li><p><strong>kwargs</strong> – The data that need to be changed. Options are: uri, name, symbol, fee, creators</p></li>
 </ul>
 </dd>
@@ -347,7 +426,7 @@ the RPC endpoint will be: <cite>https://api.devnet.solana.com</cite></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="solen.token_client.TokenClient.balance">
 <span class="sig-name descname"><span class="pre">balance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">owner</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">solana.publickey.PublicKey</span><span class="p"><span class="pre">,</span> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="_modules/solen/token_client.html#TokenClient.balance"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.token_client.TokenClient.balance" title="Permalink to this definition"></a></dt>
-<dd><p>Returns the token balance for the given wallet address. (default is keypair address)</p>
+<dd><p>Returns the token balance for the given dest address. (default is keypair address)</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>owner</strong> – The address that need to query for token balance (default is configured keypair address).</p>
@@ -362,23 +441,37 @@ the RPC endpoint will be: <cite>https://api.devnet.solana.com</cite></p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="solen.token_client.TokenClient.bulk_confirm_transactions">
-<span class="sig-name descname"><span class="pre">bulk_confirm_transactions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">transfer_csv_path</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/solen/token_client.html#TokenClient.bulk_confirm_transactions"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.token_client.TokenClient.bulk_confirm_transactions" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">bulk_confirm_transactions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">csv_path</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/solen/token_client.html#TokenClient.bulk_confirm_transactions"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.token_client.TokenClient.bulk_confirm_transactions" title="Permalink to this definition"></a></dt>
 <dd><p>Verify that transfer amount transaction signatures are finalized.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>transfer_csv_path</strong> – Path to a csv file in the format of: wallet,amount.</p>
+<dd class="field-odd"><p><strong>csv_path</strong> – Path to the csv file that been processed.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="solen.token_client.TokenClient.bulk_sum_info">
+<span class="sig-name descname"><span class="pre">bulk_sum_info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">in_process</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_sum</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/solen/token_client.html#TokenClient.bulk_sum_info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.token_client.TokenClient.bulk_sum_info" title="Permalink to this definition"></a></dt>
+<dd><p>Log sum status for token transfer</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>in_process</strong> – Current content of the in-process json file (default taken from bulk_transfer_token_handler).</p></li>
+<li><p><strong>log_sum</strong> – If true the sum data will be logged (not just returned).</p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="solen.token_client.TokenClient.bulk_transfer_token">
-<span class="sig-name descname"><span class="pre">bulk_transfer_token</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">transfer_csv_path</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dry_run</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip_confirm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/solen/token_client.html#TokenClient.bulk_transfer_token"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.token_client.TokenClient.bulk_transfer_token" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">bulk_transfer_token</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">csv_path</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dry_run</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip_confirm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/solen/token_client.html#TokenClient.bulk_transfer_token"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.token_client.TokenClient.bulk_transfer_token" title="Permalink to this definition"></a></dt>
 <dd><p>Transfer token to multiple addresses, based on the content of transfer_csv_path.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>transfer_csv_path</strong> – Path to a csv file in the format of: wallet,amount.</p></li>
+<li><p><strong>csv_path</strong> – Path to a csv file in the format of: dest,amount.</p></li>
 <li><p><strong>dry_run</strong> – When true the transactions will be skipped.</p></li>
 <li><p><strong>skip_confirm</strong> – When true transaction confirmation will be skipped. Run will be faster but less reliable.</p></li>
 </ul>
@@ -387,8 +480,8 @@ the RPC endpoint will be: <cite>https://api.devnet.solana.com</cite></p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">solen</span> <span class="kn">import</span> <span class="n">TokenClient</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">token_client</span> <span class="o">=</span> <span class="n">TokenClient</span><span class="p">(</span><span class="s2">&quot;main&quot;</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">token_client</span><span class="o">.</span><span class="n">bulk_transfer_token</span><span class="p">(</span><span class="n">csv_path</span><span class="p">)</span>
-<span class="go">when csv contain transfer data, for example:</span>
-<span class="go">wallet,amount</span>
+<span class="go">when csv should contain transfer actions data, for example:</span>
+<span class="go">dest,amount</span>
 <span class="go">Cy4y1XGR9pj7vFikWVGrdQAPWCChqV9gQHCLht6eXBLW,0.001</span>
 <span class="go">Cy4y1XGR9pj7vFikWVGrdQAPWCChqV9gQHCLht6eXBLW,0.001</span>
 </pre></div>
@@ -397,28 +490,11 @@ the RPC endpoint will be: <cite>https://api.devnet.solana.com</cite></p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="solen.token_client.TokenClient.bulk_transfer_token_init">
-<span class="sig-name descname"><span class="pre">bulk_transfer_token_init</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">transfer_csv_path</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/solen/token_client.html#TokenClient.bulk_transfer_token_init"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.token_client.TokenClient.bulk_transfer_token_init" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">bulk_transfer_token_init</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">csv_path</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/solen/token_client.html#TokenClient.bulk_transfer_token_init"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.token_client.TokenClient.bulk_transfer_token_init" title="Permalink to this definition"></a></dt>
 <dd><p>Create the bulk transfer config based on given CSV file.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>transfer_csv_path</strong> – Path to a csv file in the format of: wallet,amount.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="solen.token_client.TokenClient.confirm_transaction">
-<span class="sig-name descname"><span class="pre">confirm_transaction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tx_sig</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">commitment</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Commitment</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'finalized'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sleep_seconds</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">response_extra</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">30</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span></span></span><a class="reference internal" href="_modules/solen/token_client.html#TokenClient.confirm_transaction"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.token_client.TokenClient.confirm_transaction" title="Permalink to this definition"></a></dt>
-<dd><p>Confirm the transaction identified by the specified signature.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>tx_sig</strong> – The transaction signature to confirm.</p></li>
-<li><p><strong>commitment</strong> – Bank state to query. It can be either “finalized”, “confirmed” or “processed”.</p></li>
-<li><p><strong>sleep_seconds</strong> – The number of seconds to sleep when polling the signature status.</p></li>
-<li><p><strong>response_extra</strong> – Extra data for response, in dict format (will be added as key: value in response)</p></li>
-<li><p><strong>timeout</strong> – Timeout in seconds to wait for confirmation</p></li>
-</ul>
+<dd class="field-odd"><p><strong>csv_path</strong> – Path to a csv file in the format of: dest,amount.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -437,7 +513,7 @@ the RPC endpoint will be: <cite>https://api.devnet.solana.com</cite></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="solen.token_client.TokenClient.get_associated_address">
 <span class="sig-name descname"><span class="pre">get_associated_address</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">owner</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">token</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">solana.publickey.PublicKey</span></span></span><a class="reference internal" href="_modules/solen/token_client.html#TokenClient.get_associated_address"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.token_client.TokenClient.get_associated_address" title="Permalink to this definition"></a></dt>
-<dd><p>Derives the associated token address for the given wallet address and token mint.</p>
+<dd><p>Derives the associated token address for the given dest address and token mint.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -482,6 +558,17 @@ the RPC endpoint will be: <cite>https://api.devnet.solana.com</cite></p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="solen.token_client.TokenClient.get_transfer_status">
+<span class="sig-name descname"><span class="pre">get_transfer_status</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">csv_path</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/solen/token_client.html#TokenClient.get_transfer_status"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.token_client.TokenClient.get_transfer_status" title="Permalink to this definition"></a></dt>
+<dd><p>Get transfer status for a given transfer csv file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>csv_path</strong> – Path to a csv file to retrieve transfer data for.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="solen.token_client.TokenClient.is_account_funded">
 <span class="sig-name descname"><span class="pre">is_account_funded</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">address</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="_modules/solen/token_client.html#TokenClient.is_account_funded"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.token_client.TokenClient.is_account_funded" title="Permalink to this definition"></a></dt>
 <dd><p>Return true id the given account exist and founded.</p>
@@ -504,29 +591,17 @@ the RPC endpoint will be: <cite>https://api.devnet.solana.com</cite></p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="solen.token_client.TokenClient.process_transfer_csv">
-<span class="sig-name descname"><span class="pre">process_transfer_csv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">transfer_csv_path</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span></span></span><a class="reference internal" href="_modules/solen/token_client.html#TokenClient.process_transfer_csv"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.token_client.TokenClient.process_transfer_csv" title="Permalink to this definition"></a></dt>
-<dd><p>Read the csv file and return dict of all the lines.
-The line index is the key and not the wallet since wallet may exist more than once.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>transfer_csv_path</strong> – Path to a csv file in the format of: wallet,amount.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
 <dt class="sig sig-object py" id="solen.token_client.TokenClient.transfer_token">
 <span class="sig-name descname"><span class="pre">transfer_token</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dest</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">amount</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dry_run</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip_confirmation</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">commitment</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Commitment</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'confirmed'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span></span></span><a class="reference internal" href="_modules/solen/token_client.html#TokenClient.transfer_token"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#solen.token_client.TokenClient.transfer_token" title="Permalink to this definition"></a></dt>
 <dd><p>Generate an instruction that transfers amount of configured token from one self account to another.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>dest</strong> – recipient address.</p></li>
-<li><p><strong>amount</strong> – amountof token to transfer.</p></li>
-<li><p><strong>dry_run</strong> – if true the transfer will not be executed.</p></li>
-<li><p><strong>skip_confirmation</strong> – if true send transfer will not be coffirmed. It might be faster.</p></li>
-<li><p><strong>commitment</strong> – the commitment type for send transfer.</p></li>
+<li><p><strong>dest</strong> – Recipient address.</p></li>
+<li><p><strong>amount</strong> – Amountof token to transfer.</p></li>
+<li><p><strong>dry_run</strong> – If true the transfer will not be executed.</p></li>
+<li><p><strong>skip_confirmation</strong> – If true send transfer will not be coffirmed. It might be faster.</p></li>
+<li><p><strong>commitment</strong> – The commitment type for send transfer.</p></li>
 </ul>
 </dd>
 </dl>
