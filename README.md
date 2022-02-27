@@ -95,7 +95,7 @@ Transfer token from current wallet to a destination wallet.
 A single transfer example: 
 
 ```
-solen transfer AuMtXeRS7hws6Ktw5R6tQq3LgDYE69HwwmG9kzNniScW 0.001
+solen token transfer AuMtXeRS7hws6Ktw5R6tQq3LgDYE69HwwmG9kzNniScW 0.001
 ```
 
 #### Bulk Transfer ####
@@ -121,10 +121,7 @@ Running the transfer commands multiple times will run failed transactions if the
 Sample flow:
 
 ```
-solen bulk-transfer -h
-solen bulk-transfer init transfer-file-path.csv --env dev
-solen bulk-transfer run transfer-file-path.csv --dry-run --env dev
-solen bulk-transfer run transfer-file-path.csv --env dev
-solen bulk-transfer confirm transfer-file-path.csv --env dev
+solen token bulk-transfer transfer-file-path.csv --skip_confirm --env dev
+solen token bulk-transfer-status transfer-file-path.csv --env dev
 ```
 
