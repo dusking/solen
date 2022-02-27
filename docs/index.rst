@@ -87,7 +87,7 @@ This is just a sample for a configuration file:
 .. highlight:: sh
 .. code-block:: sh
 
-   [endpoint]
+   [endpoints]
    dev = https://api.devnet.solana.com
    main = https://api.mainnet-beta.solana.com
 

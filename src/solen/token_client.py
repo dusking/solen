@@ -302,12 +302,19 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
             left_unconfirmed_to_transfer=total_not_confirmed_to_transfer_str,
         )
 
-    def bulk_transfer_token(self, csv_path: str, dry_run=False, skip_confirm=False):
+    def bulk_transfer_token(
+        self,
+        csv_path: str,
+        dry_run: bool = False,
+        skip_confirm: bool = False,
+        ignore_unfinalized_signature: bool = False,
+    ):
         """Transfer token to multiple addresses, based on the content of transfer_csv_path.
 
         :param csv_path: Path to a csv file in the format of: dest,amount.
         :param dry_run: When true the transactions will be skipped.
         :param skip_confirm: When true transaction confirmation will be skipped. Run will be faster but less reliable.
+        :param ignore_unfinalized_signature: When true actions with un-finalized transaction will retry processing.
 
         >>> from solen import TokenClient
         >>> token_client = TokenClient("main")
@@ -317,7 +324,9 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
         Cy4y1XGR9pj7vFikWVGrdQAPWCChqV9gQHCLht6eXBLW,0.001
         Cy4y1XGR9pj7vFikWVGrdQAPWCChqV9gQHCLht6eXBLW,0.001
         """
-        transfer_response = self.bulk_transfer_token_handler.bulk_run(csv_path, dry_run, skip_confirm)
+        transfer_response = self.bulk_transfer_token_handler.bulk_run(
+            csv_path, dry_run, skip_confirm, ignore_unfinalized_signature
+        )
         if not transfer_response.ok:
             logger.error(f"failed to transfer, err: {transfer_response.err}")
         return self.bulk_transfer_token_handler.sum_info()

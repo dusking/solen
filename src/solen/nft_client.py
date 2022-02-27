@@ -420,13 +420,20 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
             total_finalized=total_finalized,
         )
 
-    def bulk_update_nft(self, csv_path: str, dry_run=False, skip_confirm=False):
+    def bulk_update_nft(
+        self,
+        csv_path: str,
+        dry_run: bool = False,
+        skip_confirm: bool = False,
+        ignore_unfinalized_signature: bool = False,
+    ):
         """Update multiple NFTs, based on the content of transfer_csv_path.
 
         :param csv_path: Path to a csv file in the format of: mint_address,VALUE_TO_UPDATE. Options for
             value to update: symbol, name, uri
         :param dry_run: When true the transactions will be skipped.
         :param skip_confirm: When true transaction confirmation will be skipped. Run will be faster but less reliable.
+        :param ignore_unfinalized_signature: When true actions with un-finalized transaction will retry processing.
 
         >>> from solen import NFTClient
         >>> token_client = NFTClient("dev")
@@ -436,7 +443,9 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
         Cy4y1XGR9pj7vFikWVGrdQAPWCChqV9gQHCLht6eXBLW,MQA
         Cy4y1XGR9pj7vFikWVGrdQAPWCChqV9gQHCLht6eXBLW,MQA
         """
-        update_response = self.bulk_update_nft_handler.bulk_run(csv_path, dry_run, skip_confirm)
+        update_response = self.bulk_update_nft_handler.bulk_run(
+            csv_path, dry_run, skip_confirm, ignore_unfinalized_signature
+        )
         if not update_response.ok:
             logger.error(f"failed to update nfts, err: {update_response.err}")
         return self.bulk_update_nft_handler.sum_info()

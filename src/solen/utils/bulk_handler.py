@@ -94,12 +94,19 @@ class BulkHandler:  # pylint: disable=too-many-instance-attributes
         self.sum_info(self.in_process, log_sum=True)
         return self.in_process
 
-    def bulk_run(self, csv_path: str, dry_run: bool = False, skip_confirm: bool = False):
+    def bulk_run(
+        self,
+        csv_path: str,
+        dry_run: bool = False,
+        skip_confirm: bool = False,
+        ignore_unfinalized_signature: bool = False,
+    ):
         """Transfer token to multiple addresses, based on the content of transfer_csv_path.
 
         :param csv_path: Path to a csv file to process.
         :param dry_run: When true the transactions will be skipped.
         :param skip_confirm: When true transaction confirmation will be skipped. Run will be faster but less reliable.
+        :param ignore_unfinalized_signature: When true actions with un-finalized transaction will retry processing.
 
         when csv should contain action data, that can be parsed by the actions function.
         """
@@ -124,13 +131,12 @@ class BulkHandler:  # pylint: disable=too-many-instance-attributes
         logger.info(f"going to handle {left_items} out of {total_items} actions")
         counter = 0
         for i, item in self.in_process.items():
-            if item.get("signature"):
+            if not ignore_unfinalized_signature and item.get("signature"):
+                continue
+            if item.get("finalized"):
                 continue
             counter += 1
-            # current_token_balance = "N/A in dry-run" if dry_run else f"{self.balance(self.keypair.public_key):,}"
-            logger.info(
-                f"[{i}] [{self._elapsed_time()}] handle {self.action_name} {counter}/{left_items}, current balance: "
-            )
+            logger.info(f"[{i}] [{self._elapsed_time()}] handle {self.action_name} {counter}/{left_items}")
             transfer_args = DotDict(dry_run=dry_run)
             for column in self.columns:
                 transfer_args[column] = item[column]

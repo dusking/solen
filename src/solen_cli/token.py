@@ -40,13 +40,22 @@ def transfer(wallet, amount, env=None):
 @argh.arg("-e", "--env", help="Solana env (dev / main)")
 @argh.arg("-d", "--dry-run", action="store_true", help="Dry run - don't send transactions")
 @argh.arg("-s", "--skip_confirm", default=False, action="store_true", help="Run transaction without confirmations")
-def bulk_transfer(csv, dry_run=False, env=None, skip_confirm=False):
+@argh.arg(
+    "-i",
+    "--ignore-unfinalized-signature",
+    default=False,
+    action="store_true",
+    help="Run transfer also for action with signature but not finalized",
+)
+def bulk_transfer(csv, dry_run=False, env=None, skip_confirm=False, ignore_unfinalized_signature=False):
     """Transfer token to multiple addresses, based on the content of the given csv"""
     log_print.header(f"bulk transfer token (skip-confirmation: {skip_confirm}, dry-run: {dry_run}, env: {env})")
     token_client = TokenClient(env)
     log_print.info(f"running on {token_client.context.rpc_endpoint}")
     if token_client.bulk_transfer_token_init(csv):
-        token_client.bulk_transfer_token(csv, dry_run=dry_run, skip_confirm=skip_confirm)
+        token_client.bulk_transfer_token(
+            csv, dry_run=dry_run, skip_confirm=skip_confirm, ignore_unfinalized_signature=ignore_unfinalized_signature
+        )
         token_client.bulk_confirm_transactions(csv)
 
 

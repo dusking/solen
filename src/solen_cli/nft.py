@@ -37,13 +37,22 @@ def update(mint_address, env=None, **kwargs):
 @argh.arg("-e", "--env", help="Solana env (dev / main)")
 @argh.arg("-d", "--dry-run", action="store_true", help="Dry run - don't send transactions")
 @argh.arg("-s", "--skip_confirm", default=False, action="store_true", help="Run update without confirmations")
-def bulk_update(csv, dry_run=False, env=None, skip_confirm=False):
+@argh.arg(
+    "-i",
+    "--ignore-unfinalized-signature",
+    default=False,
+    action="store_true",
+    help="Run update also for action with signature but not finalized",
+)
+def bulk_update(csv, dry_run=False, env=None, skip_confirm=False, ignore_unfinalized_signature=False):
     """Update multiple NFTs metadata, based on the content of the given csv"""
     log_print.header(f"bulk update NFT (skip-confirmation: {skip_confirm}, dry-run={dry_run}, env: {env})")
     nft_client = NFTClient(env)
     log_print.info(f"running on {nft_client.context.rpc_endpoint}")
     if nft_client.bulk_update_init(csv):
-        nft_client.bulk_update_nft(csv, dry_run=dry_run, skip_confirm=skip_confirm)
+        nft_client.bulk_update_nft(
+            csv, dry_run=dry_run, skip_confirm=skip_confirm, ignore_unfinalized_signature=ignore_unfinalized_signature
+        )
         nft_client.bulk_confirm_transactions(csv)
 
 

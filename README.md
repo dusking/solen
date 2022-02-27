@@ -58,7 +58,7 @@ The token represent a specifc Solana based token for the token commands.
 This is just a sample:
 
 ```
-[endpoint]
+[endpoints]
 dev = https://api.devnet.solana.com
 main = https://api.mainnet-beta.solana.com
 

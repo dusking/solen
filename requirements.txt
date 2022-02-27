@@ -2,3 +2,4 @@ sphinx==4.4.0
 sphinx_rtd_theme==1.0.0
 pylint==2.12.2
 pylint-plugin-utils==0.7
+arweave-python-client==1.0.18
