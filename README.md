@@ -3,7 +3,7 @@ Solen - A Solana Token Util
 [![PypI](http://img.shields.io/pypi/v/solen.svg)](http://img.shields.io/pypi/v/solen.svg)
 
 
-This library aim to handle the RPC commands for a Solana based Token.
+Solen is a base Python util for Solana based token commands. You can use it as a CLI tool and as a python library.
 
 Features:
 * Balance of local wallet for SOL / Token
@@ -17,6 +17,8 @@ Suggestions and PRs welcome!
 **Note: This is experimental software for a young ecosystem. 
 Use at your own risk. The author is not responsible for misuse of the software or for the user failing 
 to test specific commands on devnet before using on production.**
+
+See also: [the Solana tool suite](https://docs.solana.com/cli/install-solana-cli-tools), the official solana cli.
 
 ## Installation ##
 

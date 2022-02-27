@@ -4,10 +4,12 @@ import logging
 import argh
 import pkg_resources
 
+from .nft import update, accounts, bulk_update, bulk_update_status
+from .token import balance, transfer, bulk_transfer, bulk_transfer_status
+from .log_print import LogPrint
+
 # from solen import Context, NFTClient, SOLClient, TokenClient
 
-from .log_print import LogPrint
-from .token import balance, transfer, bulk_transfer, bulk_status
 
 log_print = LogPrint()
 
@@ -30,7 +32,8 @@ def version():
 def main():
     parser = argh.ArghParser(description="Solana Token Util (Solen)")
     parser.add_commands([version])
-    parser.add_commands([balance, transfer, bulk_transfer, bulk_status], namespace="token")
+    parser.add_commands([balance, transfer, bulk_transfer, bulk_transfer_status], namespace="token")
+    parser.add_commands([accounts, update, bulk_update, bulk_update_status], namespace="nft")
     parser.dispatch()
 
 

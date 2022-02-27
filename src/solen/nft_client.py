@@ -1,9 +1,11 @@
+import os
 import json
+import time
 import base64
 import struct
 import logging
 from typing import Dict, List, Union, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import base58
 from asyncit import Asyncit
@@ -19,11 +21,12 @@ from .response import Ok, Err, Response
 from .core.errors import token_metadata_errors
 from .core.metadata import Metadata
 from .core.transactions import Transactions
+from .utils.bulk_handler import BulkHandler
 
 logger = logging.getLogger(__name__)
 
 
-class NFTClient:
+class NFTClient:  # pylint: disable=too-many-instance-attributes
     """NFT Client class.
 
     :param env: The Solana env (options are based on the config file)
@@ -35,12 +38,37 @@ class NFTClient:
 
     def __init__(self, env: str, context: Context = None):
         """Init NFT Client."""
+        self.env = env
         self.context = context or Context(env)
         self.client = self.context.client
         self.keypair = self.context.keypair
+        self.config_folder = self.context.config_folder
+        self.transfers_data_folder = self.config_folder.joinpath("transfers")
+        self.updates_data_folder = self.config_folder.joinpath("updates")
+        self.bulk_update_nft_handler = BulkHandler(
+            self.client,
+            self.env,
+            self.updates_data_folder,
+            self.update_token_metadata,
+            self.bulk_sum_info,
+            "update",
+            ["mint_address"],
+        )
         self.rpc_endpoint = self.context.rpc_endpoint
         self.metadata = Metadata()
         self.transaction = Transactions()
+        self.clock_time = time.perf_counter
+        self.run_start = self.clock_time()
+        os.makedirs(self.transfers_data_folder, exist_ok=True)
+        os.makedirs(self.updates_data_folder, exist_ok=True)
+
+    def _set_start_time(self):
+        self.run_start = self.clock_time()
+
+    def _elapsed_time(self, run_start=None):
+        run_start = run_start or self.run_start
+        elapsed_time = self.clock_time() - run_start
+        return str(timedelta(seconds=elapsed_time)).split(".", maxsplit=1)[0]
 
     def get_data(self, mint_key: str, sort_creators_by_share: bool = True) -> Dict:
         """Get the NFT On-Chain data. The creators data returned sorted by share.
@@ -226,12 +254,27 @@ class NFTClient:
         response = self.client.get_token_accounts_by_owner(PublicKey(str(owner)), opt, commitment)
         return [self._parse_token_value(v) for v in response["result"]["value"]]
 
-    def update_token_metadata(
-        self, mint_address, max_retries=1, skip_confirmation=False, max_timeout=60, target=20, finalized=True, **kwargs
-    ) -> Response:
+    def update_token_metadata(  # pylint: disable=too-many-return-statements
+        self,
+        mint_address,
+        max_retries=1,
+        skip_confirmation=False,
+        max_timeout=60,
+        target=20,
+        finalized=True,
+        dry_run=False,
+        **kwargs,
+    ) -> Dict:
         """Updates the metadata for a given NFT.
 
         :param mint_address: The NFT mint address.
+        :param max_retries: Mac retry attempts of send_transaction in case of failure.
+        :param skip_confirmation: If true send transfer will not be coffirmed. It might be faster.
+        :param max_timeout: Max timeout for transaction confirmation. Not used if skip_confirmation is True.
+        :param target: Target for confirmations transaction confirmation. Not used if skip_confirmation is True.
+        :param finalized: If true transaction confirmed only if it has status Finalized, else target is used
+            to confirm transaction.
+        :param dry_run: If true the transfer will not be executed.
         :param kwargs: The data that need to be changed. Options are: uri, name, symbol, fee, creators
 
         * uri : str
@@ -252,14 +295,18 @@ class NFTClient:
         In case os an error, the signature will be in response.err,
         In case os succefull update, the signature will be in response.ok.
         """
+        run_start = self.clock_time()
+        kwargs = {k: v for k, v in kwargs.items() if v}  # remove keys with None value
+        response = DotDict(mint_address=mint_address, confirmed=False, signature="", **kwargs)
         new_creators = kwargs.get("creators")
         if new_creators:
             creators_addresses = [c["address"] for c in new_creators]
             creators_verified = [c["verified"] for c in new_creators]
             creators_share = [c["share"] for c in new_creators]
             if not len(creators_addresses) == len(creators_verified) == len(creators_share):
-                logger.error(f"update token failed, bad creators data: {new_creators}")
-                return Err("")
+                err_msg = f"update token failed, bad creators data: {new_creators}"
+                logger.error(err_msg)
+                return response.update(err=err_msg, ok=False, time=self._elapsed_time(run_start))
         else:
             creators_addresses = creators_verified = creators_share = None
 
@@ -276,7 +323,9 @@ class NFTClient:
             creators_verified=creators_verified or list(current_data.data.verified),
             creators_share=creators_share or list(current_data.data.share),
         )
-        # return data
+        if dry_run:
+            logger.info(f"dry-run. data: {data}")
+            return response.update(signature="test-run", ok=True, time=self._elapsed_time(run_start))
         tx, signers = self.transaction.create_update_token_metadata_tx(**data)
         resp = self.transaction.execute(
             self.rpc_endpoint,
@@ -289,15 +338,19 @@ class NFTClient:
             finalized=finalized,
         )
         if not resp:
-            logger.error("failed to execute transaction")
-            return Err("failed to execute transaction")
+            return response.update(err="failed to execute transaction", ok=False, time=self._elapsed_time(run_start))
         transaction_signature = resp["result"]
         if skip_confirmation:
-            return Ok(transaction_signature)
+            return response.update(signature=transaction_signature, ok=True, time=self._elapsed_time(run_start))
         logger.info(f"going to verify update transaction signature: {transaction_signature}")
         transaction_data = DotDict(self.get_transaction_data(transaction_signature))
         if not transaction_data:
-            return Err(transaction_signature)
+            return response.update(
+                signature=transaction_signature,
+                err="failed to get transaction data",
+                ok=False,
+                time=self._elapsed_time(run_start),
+            )
         if transaction_data.status.Err:
             logger.error("\n".join(transaction_data.logMessages))
             err_code = None
@@ -305,8 +358,91 @@ class NFTClient:
                 if "custom program error:" in line:
                     err_code = line.split(":")[-1].strip()
                     err_code = err_code.split("x")[-1]
-            err_message = token_metadata_errors.get(err_code) if err_code else ""
-            logger.error(f"failed to update token data, {err_message}")
-            return Err(transaction_signature)
+            err_code_message_decode = token_metadata_errors.get(err_code) if err_code else ""
+            msg_message = f"failed to update token data, {err_code_message_decode}"
+            logger.error(msg_message)
+            return response.update(
+                signature=transaction_signature, err=msg_message, ok=False, time=self._elapsed_time(run_start)
+            )
         logger.info("update been verified")
-        return Ok(transaction_signature)
+        return response.update(
+            signature=transaction_signature, ok=True, confirmed=True, time=self._elapsed_time(run_start)
+        )
+
+    def bulk_update_init(self, csv_path: str):
+        """Create the bulk update config based on given CSV file.
+
+        :param csv_path: Path to a csv file in the format of: wallet,amount.
+        """
+        with open(csv_path, encoding="UTF-8") as f:
+            first_line = f.readlines()[0]
+        columns = {i.strip() for i in first_line.split(",")}
+        optional_nft_update_key = {"uri", "name", "symbol", "fee", "creators"}
+        exiting_nft_update_columns = list(columns.intersection(optional_nft_update_key))
+        self.bulk_update_nft_handler.columns = ["mint_address"] + list(exiting_nft_update_columns)
+        logger.info(f"updating attributes: {self.bulk_update_nft_handler.columns}")
+        in_process_data = self.bulk_update_nft_handler.bulk_init(csv_path)
+        logger.info(f"parsed {len(in_process_data)} lines of update commands")
+        return len(in_process_data) > 0
+
+    def bulk_sum_info(self, in_process: Dict = None, log_sum: bool = False):
+        """Log sum status for
+
+        :param in_process: Current content of the in-process json file (default taken from bulk_update_nft_handler).
+        :param log_sum: If true the sum data will be logged (not just returned).
+        """
+        in_process = in_process or self.bulk_update_nft_handler.in_process
+
+        total_items = len(in_process)
+        total_items_with_no_signature = sum(not i["signature"] for i in in_process.values())
+        items_with_signature_but_not_finalized = sum(not i["finalized"] for i in in_process.values() if i["signature"])
+        total_finalized = sum(i["finalized"] for i in in_process.values())
+
+        if log_sum:
+            logger.info(
+                f"Total updated: {total_items - total_items_with_no_signature} out of {total_items} items. "
+                f"Items with signature but not finalized: {items_with_signature_but_not_finalized}. "
+                f"Total finalized: {total_finalized}"
+            )
+
+        return dict(
+            total_items=total_items,
+            items_with_no_signature=total_items_with_no_signature,
+            items_with_signature_but_not_finalized=items_with_signature_but_not_finalized,
+            total_finalized=total_finalized,
+        )
+
+    def bulk_update_nft(self, csv_path: str, dry_run=False, skip_confirm=False):
+        """Update multiple NFTs, based on the content of transfer_csv_path.
+
+        :param csv_path: Path to a csv file in the format of: mint_address,VALUE_TO_UPDATE. Options for
+            value to update: symbol, name, uri
+        :param dry_run: When true the transactions will be skipped.
+        :param skip_confirm: When true transaction confirmation will be skipped. Run will be faster but less reliable.
+
+        >>> from solen import NFTClient
+        >>> token_client = NFTClient("dev")
+        >>> token_client.bulk_update_nft(csv_path)
+        when csv should contain update actions data, for example:
+        mint_address,symbol
+        Cy4y1XGR9pj7vFikWVGrdQAPWCChqV9gQHCLht6eXBLW,MQA
+        Cy4y1XGR9pj7vFikWVGrdQAPWCChqV9gQHCLht6eXBLW,MQA
+        """
+        update_response = self.bulk_update_nft_handler.bulk_run(csv_path, dry_run, skip_confirm)
+        if not update_response.ok:
+            logger.error(f"failed to update nfts, err: {update_response.err}")
+        return self.bulk_update_nft_handler.sum_info()
+
+    def bulk_confirm_transactions(self, csv_path: str):
+        """Verify that update transaction signatures are finalized.
+
+        :param csv_path: Path to the csv file that been processed.
+        """
+        self.bulk_update_nft_handler.bulk_confirm(csv_path)
+
+    def get_update_status(self, csv_path: str):
+        """Get update status for a given update csv file.
+
+        :param csv_path: Path to a csv file to retrieve update data for.
+        """
+        return self.bulk_update_nft_handler.bulk_status(csv_path)
