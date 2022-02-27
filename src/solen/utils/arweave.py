@@ -17,12 +17,12 @@ logger = logging.getLogger(__name__)
 class Arweave:
     """Arewave client
 
-    :param wallet_key_pair: Path to your arweave key pair file.
+    :param jwk_file: Path to your arweave key pair file.
     """
 
-    def __init__(self, wallet_key_pair: str):
+    def __init__(self, jwk_file: str):
         self.config_folder = None
-        self.wallet = Wallet(wallet_key_pair)
+        self.wallet = Wallet(jwk_file)
 
     def set_config_folder(self, config_folder: str):
         """Set path to a folder that the upload data will be saved.
