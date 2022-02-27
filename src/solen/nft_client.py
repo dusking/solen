@@ -20,6 +20,7 @@ from solana.rpc.commitment import Finalized, Commitment
 from .context import Context
 from .core.errors import token_metadata_errors
 from .core.metadata import Metadata
+from .utils.arweave import Arweave
 from .core.transactions import Transactions
 from .utils.bulk_handler import BulkHandler
 
@@ -59,6 +60,7 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
         self.transaction = Transactions()
         self.clock_time = time.perf_counter
         self.run_start = self.clock_time()
+        self.arweave = None
         os.makedirs(self.transfers_data_folder, exist_ok=True)
         os.makedirs(self.updates_data_folder, exist_ok=True)
 
@@ -70,7 +72,12 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
         elapsed_time = self.clock_time() - run_start
         return str(timedelta(seconds=elapsed_time)).split(".", maxsplit=1)[0]
 
-    def get_data(self, mint_key: str, sort_creators_by_share: bool = True) -> Dict:
+    def set_arweave(self):
+        if not self.arweave:
+            self.arweave = Arweave(os.path.expanduser(self.context.config.arweave.jwk_file))
+            self.arweave.set_config_folder(self.config_folder)
+
+    def get_data(self, mint_key: str, sort_creators_by_share: bool = True) -> DotDict:
         """Get the NFT On-Chain data. The creators data returned sorted by share.
 
          :param mint_key: The NFT mint address.
@@ -111,13 +118,36 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
             metadata.data.creators, metadata.data.share, metadata.data.verified = [list(i) for i in zipped]
         return metadata
 
-    @staticmethod
-    def get_uri_metadata(uri: str) -> Dict:
-        response = requests.get(uri)
+    def get_uri_data(self, mint_key: str) -> DotDict:
+        """Get uri metadata for a given NFT.
+
+        :param mint_key: The NFT address that needs to get its uri metadata.
+        """
+        on_chain_data = self.get_data(mint_key)
+        response = requests.get(on_chain_data.data.uri)
         if response.status_code != 200:
-            logger.error(f"failed to get uri: {uri}, status: {response.status_code}")
-            return {}
+            logger.error(f"failed to get uri: {on_chain_data.data.uri}, status: {response.status_code}")
+            return DotDict({})
         return DotDict(json.loads(response.content.decode("utf-8")))
+
+    def get_uri_with_updated_data(self, mint_key: str, **kwargs) -> DotDict:
+        """Create arweave uri for a given NFT metadata with updated data.
+
+        :param mint_key: The NFT address that needs to be updated.
+        :param kwargs: The new key: vale. Options are:
+            ["name", "symbol", "description", "seller_fee_basis_points", "image", "external_url"]
+        """
+        response = DotDict(mint_key=mint_key)
+        self.set_arweave()
+        data = self.get_uri_data(mint_key)
+        optional_nft_update_keys = {"name", "symbol", "description", "seller_fee_basis_points", "image", "external_url"}
+        update_data_args = {k: v for k, v in kwargs.items() if k in optional_nft_update_keys}
+        data.update(update_data_args)
+        new_uri = self.arweave.upload_data(data)
+        if not new_uri:
+            logger.error("failed to upload data to arweave")
+            return response.update(ok=False, err="failed to upload data to arweave")
+        return response.update(ok=True, uri=new_uri)
 
     def bulk_get_data(self, mint_key_list: List[str], sort_creators_by_share: bool = True) -> List[Dict]:
         """Bulk call to get_data function, to get the NFT On-Chain data of nfts in the input list.
@@ -272,7 +302,7 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
         finalized=True,
         dry_run=False,
         **kwargs,
-    ) -> Dict:
+    ) -> DotDict:
         """Updates the metadata for a given NFT.
 
         :param mint_address: The NFT mint address.
@@ -388,7 +418,7 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
         optional_nft_update_key = {"uri", "name", "symbol", "fee", "creators"}
         exiting_nft_update_columns = list(columns.intersection(optional_nft_update_key))
         self.bulk_update_nft_handler.columns = ["mint_address"] + list(exiting_nft_update_columns)
-        logger.info(f"updating attributes: {self.bulk_update_nft_handler.columns}")
+        logger.info(f"updating attributes: {list(exiting_nft_update_columns)}")
         in_process_data = self.bulk_update_nft_handler.bulk_init(csv_path)
         logger.info(f"parsed {len(in_process_data)} lines of update commands")
         return len(in_process_data) > 0

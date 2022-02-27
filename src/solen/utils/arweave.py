@@ -8,8 +8,14 @@ from pathlib import Path
 
 import requests
 from asyncit.dicts import DotDict
-from arweave.arweave_lib import Wallet, Transaction
-from arweave.transaction_uploader import get_uploader
+
+try:
+    from arweave.arweave_lib import Wallet, Transaction
+    from arweave.transaction_uploader import get_uploader
+
+    MISSING_LIBS = None
+except Exception:
+    MISSING_LIBS = "arweave-python-client"
 
 logger = logging.getLogger(__name__)
 
@@ -17,10 +23,13 @@ logger = logging.getLogger(__name__)
 class Arweave:
     """Arewave client
 
-    :param jwk_file: Path to your arweave key pair file.
+    :param jwk_file: Path to your arweave JWK json file.
     """
 
     def __init__(self, jwk_file: str):
+        if MISSING_LIBS:
+            raise ModuleNotFoundError(f"missing libs: {MISSING_LIBS}")
+
         self.config_folder = None
         self.wallet = Wallet(jwk_file)
 
@@ -39,13 +48,15 @@ class Arweave:
 
         :param data: Can be string or dictionary.
         """
-        data = data if isinstance(data, str) else json.dumps(data, indent=4)
+        data = data if isinstance(data, str) else json.dumps(data)
         user_encode_data = data.encode("utf-8")
+        logger.info("going to upload data to arweave")
         tx = Transaction(self.wallet, data=user_encode_data)
         tx.add_tag("Content-Type", "application/json")
         tx.sign()
         tx.send()
         url = f"{tx.api_url}/{tx.id}/"
+        logger.info("dome uploading, going to validate url")
         return url if self.validate_upload(url) else False
 
     def upload_file(self, file_path: str, content_type=None) -> Union[str, None]:
