@@ -29,10 +29,10 @@ rebase:
 	git rebase main
 
 build:
+	make clean
 	python setup.py sdist
 
 publish:
-	make clean
 	twine upload dist/*
 
 html:
