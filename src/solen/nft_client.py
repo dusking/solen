@@ -8,16 +8,16 @@ from typing import Dict, List, Union, Optional
 from datetime import datetime, timedelta
 
 import base58
+import requests
 from asyncit import Asyncit
 from asyncit.dicts import DotDict
 from solana.publickey import PublicKey
 from solana.rpc.types import TokenAccountOpts
-from spl.token._layouts import MINT_LAYOUT, ACCOUNT_LAYOUT
+from spl.token._layouts import ACCOUNT_LAYOUT
 from spl.token.constants import TOKEN_PROGRAM_ID
-from solana.rpc.commitment import COMMITMENT_RANKS, Confirmed, Finalized, Commitment
+from solana.rpc.commitment import Finalized, Commitment
 
 from .context import Context
-from .response import Ok, Err, Response
 from .core.errors import token_metadata_errors
 from .core.metadata import Metadata
 from .core.transactions import Transactions
@@ -110,6 +110,14 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
             )
             metadata.data.creators, metadata.data.share, metadata.data.verified = [list(i) for i in zipped]
         return metadata
+
+    @staticmethod
+    def get_uri_metadata(uri: str) -> Dict:
+        response = requests.get(uri)
+        if response.status_code != 200:
+            logger.error(f"failed to get uri: {uri}, status: {response.status_code}")
+            return {}
+        return DotDict(json.loads(response.content.decode("utf-8")))
 
     def bulk_get_data(self, mint_key_list: List[str], sort_creators_by_share: bool = True) -> List[Dict]:
         """Bulk call to get_data function, to get the NFT On-Chain data of nfts in the input list.

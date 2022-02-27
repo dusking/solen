@@ -30,11 +30,11 @@ setup_kwargs = dict(
         "console_scripts": ["solen = solen_cli.main:main"],
     },
     install_requires=[
-        "solana",
-        "colorama",
-        "argh",
-        "prettytable",
-        "asyncit"
+        "colorama>=0.4.4",
+        "argh>=0.26.2",
+        "prettytable>=0.7.2",
+        "solana>=0.19.0",
+        "asyncit>=0.0.4"
     ],
     python_requires=">=3.7",
 )
