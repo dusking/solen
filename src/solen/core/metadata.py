@@ -1,7 +1,11 @@
+import base64
 import struct
+import logging
+from enum import IntEnum
 from typing import Union
 
 import base58
+from construct import Flag, Bytes, Int8ul
 from construct import Struct as cStruct  # type: ignore
 from solana.sysvar import SYSVAR_RENT_PUBKEY
 from solana.publickey import PublicKey
@@ -11,10 +15,23 @@ from solana.system_program import SYS_PROGRAM_ID as SYSTEM_PROGRAM_ID
 
 from .constants import METADATA_PROGRAM_ID
 
+logger = logging.getLogger(__name__)
+
+
+class InstructionType(IntEnum):
+    CREATE_METADATA = 0
+    UPDATE_METADATA = 1
+
 
 class Metadata:
     def __init__(self):
         pass
+
+    def get_metadata(self, client, mint_key):
+        metadata_account = self.get_metadata_account(mint_key)
+        data = base64.b64decode(client.get_account_info(metadata_account)["result"]["value"]["data"][0])
+        metadata = self.unpack_metadata_account(data)
+        return metadata
 
     @staticmethod
     def get_data_buffer(name, symbol, uri, fee, creators, verified=None, share=None):
@@ -114,13 +131,13 @@ class Metadata:
         }
         return metadata
 
-    def get_metadata_account(self, mint_key: str) -> str:
+    def get_metadata_account(self, mint_key: str) -> PublicKey:
         """Get program address"""
         return PublicKey.find_program_address(
             [b"metadata", bytes(METADATA_PROGRAM_ID), bytes(PublicKey(mint_key))], METADATA_PROGRAM_ID
         )[0]
 
-    def mint_authority(self, mint_key: str) -> str:
+    def mint_authority(self, mint_key: str) -> PublicKey:
         """Get the Mint Authority of the token"""
         return PublicKey.find_program_address(
             [b"metadata", bytes(METADATA_PROGRAM_ID), bytes(PublicKey(mint_key)), b"edition"], METADATA_PROGRAM_ID
@@ -142,7 +159,6 @@ class Metadata:
 
     def create_metadata_instruction(self, data, update_authority, mint_key, mint_authority_key, payer):
         metadata_account = self.get_metadata_account(mint_key)
-        print(metadata_account)
         keys = [
             AccountMeta(pubkey=metadata_account, is_signer=False, is_writable=True),
             AccountMeta(pubkey=mint_key, is_signer=False, is_writable=False),
@@ -154,33 +170,33 @@ class Metadata:
         ]
         return TransactionInstruction(keys=keys, program_id=METADATA_PROGRAM_ID, data=data)
 
-    def create_master_edition_instruction(
-        self,
-        mint: PublicKey,
-        update_authority: PublicKey,
-        mint_authority: PublicKey,
-        payer: PublicKey,
-        supply: Union[int, None],
-    ):
-        edition_account = self.mint_authority(mint)
-        metadata_account = self.get_metadata_account(mint)
-        if supply is None:
-            data = struct.pack("<BB", 10, 0)
-        else:
-            data = struct.pack("<BBQ", 10, 1, supply)
-        keys = [
-            AccountMeta(pubkey=edition_account, is_signer=False, is_writable=True),
-            AccountMeta(pubkey=mint, is_signer=False, is_writable=True),
-            AccountMeta(pubkey=update_authority, is_signer=True, is_writable=False),
-            AccountMeta(pubkey=mint_authority, is_signer=True, is_writable=False),
-            AccountMeta(pubkey=payer, is_signer=True, is_writable=False),
-            AccountMeta(pubkey=metadata_account, is_signer=False, is_writable=False),
-            AccountMeta(pubkey=PublicKey(TOKEN_PROGRAM_ID), is_signer=False, is_writable=False),
-            AccountMeta(pubkey=PublicKey(SYSTEM_PROGRAM_ID), is_signer=False, is_writable=False),
-            AccountMeta(pubkey=PublicKey(SYSVAR_RENT_PUBKEY), is_signer=False, is_writable=False),
-        ]
-        return TransactionInstruction(
-            keys=keys,
-            program_id=METADATA_PROGRAM_ID,
-            data=data,
+    def create_metadata_instruction_data(self, name, symbol, fee, creators, is_mutable=True):
+        _data = self.get_data_buffer(name, symbol, " " * 64, fee, creators)
+        metadata_args_layout = cStruct(
+            "data" / Bytes(len(_data)),
+            "is_mutable" / Flag,
+        )
+        _create_metadata_args = dict(data=_data, is_mutable=is_mutable)
+        instruction_layout = cStruct(
+            "instruction_type" / Int8ul,
+            "args" / metadata_args_layout,
+        )
+        return instruction_layout.build(
+            dict(
+                instruction_type=InstructionType.CREATE_METADATA,
+                args=_create_metadata_args,
+            )
+        )
+
+    def update_metadata_instruction_data(self, name, symbol, uri, fee, creators, verified, share):
+        _data = bytes([1]) + self.get_data_buffer(name, symbol, uri, fee, creators, verified, share) + bytes([0, 0])
+        instruction_layout = cStruct(
+            "instruction_type" / Int8ul,
+            "args" / Bytes(len(_data)),
+        )
+        return instruction_layout.build(
+            dict(
+                instruction_type=InstructionType.UPDATE_METADATA,
+                args=_data,
+            )
         )
