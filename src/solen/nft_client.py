@@ -18,6 +18,7 @@ from spl.token.constants import TOKEN_PROGRAM_ID
 from solana.rpc.commitment import Finalized, Commitment
 
 from .context import Context
+from .core.api import API
 from .core.errors import token_metadata_errors
 from .core.metadata import Metadata
 from .utils.arweave import Arweave
@@ -61,6 +62,7 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
         self.clock_time = time.perf_counter
         self.run_start = self.clock_time()
         self.arweave = None
+        self.api = API(self.keypair)
         os.makedirs(self.transfers_data_folder, exist_ok=True)
         os.makedirs(self.updates_data_folder, exist_ok=True)
 
@@ -249,16 +251,19 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
         signatures_data = response["result"]
         return [DotDict(add_time_to_data(d)) for d in signatures_data]
 
-    def get_transaction_data(self, signatures: str) -> Dict:
+    def get_transaction_data(self, signatures: str) -> DotDict:
         """get transaction data.
 
         :param signatures: transaction signatures.
         """
-        transaction = self.client.get_transaction(signatures)
+        transaction = DotDict(self.client.get_transaction(signatures))
+        if transaction.error:
+            logger.error(f"failed to get transaction data for {signatures}")
+            return DotDict(ok=False, err=transaction.error.message)
         if not transaction["result"]:
             logger.error(f"failed to get transaction data for {signatures}")
-            return {}
-        return DotDict(transaction["result"]["meta"])
+            return DotDict(ok=False)
+        return DotDict(ok=True, data=transaction["result"]["meta"])
 
     def _parse_token_value(self, value: Dict) -> Dict:
         """Parse extract meaningful dict data from the extended token account data."""
@@ -291,6 +296,32 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
         opt = TokenAccountOpts(program_id=TOKEN_PROGRAM_ID, encoding=encoding)
         response = self.client.get_token_accounts_by_owner(PublicKey(str(owner)), opt, commitment)
         return [self._parse_token_value(v) for v in response["result"]["value"]]
+
+    def create_nft(self, name, symbol, seller_fee_basis_points, json_uri):
+        """Mint a Metaplex NFT on Solana.
+
+        :param name: The name of the token. Limited to 32 characters. Stored on the blockchain.
+        :param symbol: The symbol of the token. Limited to 10 characters. Stored on the blockchain.
+        :param json_uri: Link to the json contains NFT metadata.
+        :param seller_fee_basis_points: Valid values from 0 to 10000. Must be an integer.
+            Represents the number of basis points that the seller receives as a fee upon sale.
+            E.g., 100 indicates a 1% seller fee.
+
+        The json structure can be found at https://medium.com/metaplex/metaplex-metadata-standard-45af3d04b541.
+        """
+        deploy_response = self.api.create_new_token_contract(name, symbol, seller_fee_basis_points)
+        if not deploy_response.ok:
+            logger.error(f"failed to deploy NFT contract, ex: {deploy_response.err}")
+            return deploy_response
+        logger.info(
+            f"new token contract created. address: {deploy_response.contract}, "
+            f"transaction signature: {deploy_response.result}"
+        )
+        contract_key = deploy_response.contract
+        destination_pub_key = self.keypair.public_key
+        mint_response = self.api.mint_nft(contract_key, destination_pub_key, json_uri)
+        mint_response.token_mint = deploy_response.contract
+        return mint_response
 
     def update_token_metadata(  # pylint: disable=too-many-return-statements
         self,
@@ -382,17 +413,17 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
             return response.update(signature=transaction_signature, ok=True, time=self._elapsed_time(run_start))
         logger.info(f"going to verify update transaction signature: {transaction_signature}")
         transaction_data = DotDict(self.get_transaction_data(transaction_signature))
-        if not transaction_data:
+        if not transaction_data.ok:
             return response.update(
                 signature=transaction_signature,
                 err="failed to get transaction data",
                 ok=False,
                 time=self._elapsed_time(run_start),
             )
-        if transaction_data.status.Err:
-            logger.error("\n".join(transaction_data.logMessages))
+        if transaction_data.data.err or transaction_data.data.status.Err:
+            logger.error("\n".join(transaction_data.data.logMessages))
             err_code = None
-            for line in transaction_data.logMessages:
+            for line in transaction_data.data.logMessages:
                 if "custom program error:" in line:
                     err_code = line.split(":")[-1].strip()
                     err_code = err_code.split("x")[-1]
