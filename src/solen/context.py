@@ -45,7 +45,7 @@ class Context:  # pylint: disable=too-many-instance-attributes
         self.config_file = self.config_folder.joinpath("config.ini")
         self.config = ConfigParser(str(self.config_file))
         self.config.load()
-        self.init(env)
+        self.init(self.env)
         logger.info(f"Solana client env: {self.env} - {self.rpc_endpoint}")
 
     def init(self, env: str):
@@ -53,7 +53,7 @@ class Context:  # pylint: disable=too-many-instance-attributes
         """Init Solen instance based on env parameter."""
         self.env = env or self.config.solana.default_env
         if self.env not in self.config.endpoints:
-            valid_rpc_options = list(self.config.endpoint.keys())
+            valid_rpc_options = list(self.config.endpoints.keys())
             logger.error(f"env {self.env} does not exists in config file. valid options: {valid_rpc_options}")
             raise Exception(f"missing env {self.env} in config")
         self.rpc_endpoint = self.config.endpoints.get(self.env)
@@ -68,6 +68,11 @@ class Context:  # pylint: disable=too-many-instance-attributes
         self.configured_token_mint = self.config.addresses.get(f"{self.env}_token")
         if not self.configured_token_mint:
             logger.warning(f"missing {self.env} token in config file")
+
+    def reload_config(self, env: Optional[str] = None):
+        env = env or self.env
+        self.config.load()
+        self.init(env)
 
     @property
     def my_address(self):

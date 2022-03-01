@@ -45,6 +45,7 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
         self.client = self.context.client
         self.keypair = self.context.keypair
         self.config_folder = self.context.config_folder
+        self.rpc_endpoint = self.context.rpc_endpoint
         self.transfers_data_folder = self.config_folder.joinpath("transfers")
         self.updates_data_folder = self.config_folder.joinpath("updates")
         self.bulk_update_nft_handler = BulkHandler(
@@ -56,7 +57,6 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
             "update",
             ["mint_address"],
         )
-        self.rpc_endpoint = self.context.rpc_endpoint
         self.metadata = Metadata()
         self.transaction = Transactions()
         self.clock_time = time.perf_counter
@@ -73,6 +73,14 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
         run_start = run_start or self.run_start
         elapsed_time = self.clock_time() - run_start
         return str(timedelta(seconds=elapsed_time)).split(".", maxsplit=1)[0]
+
+    def reload_config(self, env: Optional[str] = None):
+        env = env or self.env
+        self.context.reload_config(env)
+        self.client = self.context.client
+        self.keypair = self.context.keypair
+        self.config_folder = self.context.config_folder
+        self.rpc_endpoint = self.context.rpc_endpoint
 
     def set_arweave(self):
         if not self.arweave:
@@ -110,15 +118,19 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
         >>> print(metadata.data.name) # doctest: +SKIP
         Monkey #3882
         """
-        metadata_account = self.metadata.get_metadata_account(mint_key)
-        metadata = base64.b64decode(self.client.get_account_info(metadata_account)["result"]["value"]["data"][0])
-        metadata = DotDict(self.metadata.unpack_metadata_account(metadata))
-        if sort_creators_by_share:
-            zipped = zip(
-                *sorted(zip(metadata.data.share, metadata.data.verified, metadata.data.creators), reverse=True)
-            )
-            metadata.data.creators, metadata.data.share, metadata.data.verified = [list(i) for i in zipped]
-        return metadata
+        try:
+            metadata_account = self.metadata.get_metadata_account(mint_key)
+            metadata = base64.b64decode(self.client.get_account_info(metadata_account)["result"]["value"]["data"][0])
+            metadata = DotDict(self.metadata.unpack_metadata_account(metadata))
+            if sort_creators_by_share:
+                zipped = zip(
+                    *sorted(zip(metadata.data.share, metadata.data.verified, metadata.data.creators), reverse=True)
+                )
+                metadata.data.creators, metadata.data.share, metadata.data.verified = [list(i) for i in zipped]
+            return metadata
+        except Exception as ex:
+            logger.error(f"failed ti get data for: {mint_key}, ex: {ex}")
+            return DotDict({})
 
     def get_uri_data(self, mint_key: str) -> DotDict:
         """Get uri metadata for a given NFT.
@@ -358,8 +370,14 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
 
         >>> from solen import NFTClient
         >>> nft_client = NFTClient("dev")
+        >>> creators = [{'address': 'ABCc6rQTPdL6mXcZVUE1yDkzKq99BCAYexs26QNJJzzz',
+        >>>               'verified': 1,
+        >>>               'share': 0},
+        >>>              {'address': 'abcb6D4n8LGrzGpncShKFxkD8dpGKM3KoZ6yrmSrazzz',
+        >>>               'verified': 0,
+        >>>               'share': 100}]
         >>> response = nft_client.update_token_metadata("CF4wMo1YnK44BL8R8ZpEUpY4iskWX5KAHbRXMUvpqnJL",
-        >>>                                             name="Monkey 6001")
+        >>>                                             name="Monkey 6001", creators=creators)
 
         In case os an error, the signature will be in response.err,
         In case os succefull update, the signature will be in response.ok.
@@ -381,6 +399,11 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
 
         logger.info(f"going to update token {mint_address} values: {kwargs}")
         current_data = self.get_data(mint_address, sort_creators_by_share=False)
+        if not current_data:
+            logger.error(f"failed to update nft {mint_address}")
+            return response.update(
+                err=f"failed to update nft {mint_address}", ok=False, time=self._elapsed_time(run_start)
+            )
         data = dict(
             source_account=self.keypair,
             mint_address=PublicKey(mint_address),
@@ -392,6 +415,7 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
             creators_verified=creators_verified or list(current_data.data.verified),
             creators_share=creators_share or list(current_data.data.share),
         )
+
         if dry_run:
             logger.info(f"dry-run. data: {data}")
             return response.update(signature="test-run", ok=True, time=self._elapsed_time(run_start))
@@ -428,7 +452,7 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
                     err_code = line.split(":")[-1].strip()
                     err_code = err_code.split("x")[-1]
             err_code_message_decode = token_metadata_errors.get(err_code) if err_code else ""
-            msg_message = f"failed to update token data, {err_code_message_decode}"
+            msg_message = f"failed to update token {mint_address} data: {err_code_message_decode}"
             logger.error(msg_message)
             return response.update(
                 signature=transaction_signature, err=msg_message, ok=False, time=self._elapsed_time(run_start)
