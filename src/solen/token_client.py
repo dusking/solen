@@ -5,14 +5,14 @@ import logging
 from typing import Dict, List, Union, Optional
 from datetime import timedelta
 from functools import partial
-from collections import defaultdict
+from collections import Counter
 
 import requests
 import spl.token.instructions as spl_token
 from asyncit.dicts import DotDict
+from solana.rpc.api import MemcmpOpt
 from solana.rpc.core import RPCException, UnconfirmedTxError
 from solana.publickey import PublicKey
-from solana.rpc.api import MemcmpOpt
 from solana.rpc.types import TxOpts
 from spl.token.client import Token
 from solana.transaction import Transaction
@@ -183,7 +183,7 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
         :param dest: Recipient address.
         :param amount: Amountof token to transfer.
         :param dry_run: If true the transfer will not be executed.
-        :param skip_confirmation: If true send transfer will not be coffirmed. It might be faster.
+        :param skip_confirmation: If true send transfer will not be confirmed. It might be faster.
         :param commitment: The commitment type for send transfer.
 
         >>> from solen import TokenClient
@@ -354,16 +354,15 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
         """
         token_mint = token_mint or self.token_mint
         memcmp_opts = [MemcmpOpt(offset=0, bytes=token_mint)]
-        result = self.client.get_program_accounts(pubkey=TOKEN_PROGRAM_ID,
-                                                  encoding="jsonParsed",
-                                                  data_size=165,
-                                                  memcmp_opts=memcmp_opts)
+        result = self.client.get_program_accounts(
+            pubkey=TOKEN_PROGRAM_ID, encoding="jsonParsed", data_size=165, memcmp_opts=memcmp_opts
+        )
 
         # extract owner to quantity dict
-        holders = defaultdict(lambda: 0)
-        for data in result['result']:
-            owner = data['account']['data']['parsed']['info']['owner']
-            amount = data['account']['data']['parsed']['info']['tokenAmount']['uiAmount']
+        holders = Counter()
+        for data in result["result"]:
+            owner = data["account"]["data"]["parsed"]["info"]["owner"]
+            amount = data["account"]["data"]["parsed"]["info"]["tokenAmount"]["uiAmount"]
             holders[owner] += amount
 
         # sort

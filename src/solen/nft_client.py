@@ -6,6 +6,7 @@ import struct
 import logging
 from typing import Dict, List, Union, Optional
 from datetime import datetime, timedelta
+from collections import Counter
 
 import base58
 import requests
@@ -15,11 +16,12 @@ from solana.publickey import PublicKey
 from solana.rpc.types import TokenAccountOpts
 from spl.token._layouts import ACCOUNT_LAYOUT
 from spl.token.constants import TOKEN_PROGRAM_ID
-from solana.rpc.commitment import Finalized, Commitment
+from solana.rpc.commitment import Confirmed, Finalized, Commitment
 
 from .context import Context
 from .core.api import API
 from .core.errors import token_metadata_errors
+from .token_client import TokenClient
 from .core.metadata import Metadata
 from .utils.arweave import Arweave
 from .core.transactions import Transactions
@@ -315,23 +317,29 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
         :param owner: The owner address to query for NFTs.
         """
         owner = owner or self.keypair.public_key
-        nfts = self.get_all_nft_accounts_by_owner(owner = owner or self.keypair.public_key)
+        nfts = self.get_all_nft_accounts_by_owner(owner=owner or self.keypair.public_key)
         logger.info(f"got {len(nfts)} nfts, going to get their holders")
         mints = [data.token for data in nfts]
         asyncit = Asyncit(
-            save_output=True, save_as_json=True, pool_size=100, rate_limit=[{"period_sec": 5, "max_calls": 70}],
-            iter_indication=200
+            save_output=True,
+            save_as_json=True,
+            pool_size=100,
+            rate_limit=[{"period_sec": 5, "max_calls": 70}],
+            iter_indication=200,
         )
         for mint in mints:
             asyncit.run(self.get_current_holder, mint)
         asyncit.wait()
         holders = asyncit.get_output()
 
-        count_holders = defaultdict(lambda: 0)
+        count_holders = Counter()
         for holder in holders:
             count_holders[holder] += 1
+
         items = list(count_holders.items())
         items.sort(key=lambda x: x[1], reverse=True)
+
+        return items
 
     def create_nft(self, name, symbol, seller_fee_basis_points, json_uri):
         """Mint a Metaplex NFT on Solana.
@@ -359,9 +367,30 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
         mint_response.token_mint = deploy_response.contract
         return mint_response
 
+    def transfer_nft(
+        self,
+        token_mint: str,
+        destination: str,
+        dry_run: bool = False,
+        skip_confirmation: bool = False,
+        commitment: Commitment = Confirmed,
+    ):
+        """Transfer NFT to destination address.
+
+        :param token_mint: The token mint address to transfer.
+        :param destination: Recipient address.
+        :param dry_run: If true the transfer will not be executed.
+        :param skip_confirmation: If true send transfer will not be confirmed. It might be faster.
+        :param commitment: The commitment type for send transfer.
+        """
+        token_client = TokenClient(self.env, token_mint, self.context)
+        return token_client.transfer_token(
+            destination, amount=1, dry_run=dry_run, skip_confirmation=skip_confirmation, commitment=commitment
+        )
+
     def update_token_metadata(  # pylint: disable=too-many-return-statements
         self,
-        mint_address,
+        mint_address: str,
         max_retries=1,
         skip_confirmation=False,
         max_timeout=60,
