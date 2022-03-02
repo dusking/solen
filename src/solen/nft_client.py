@@ -309,6 +309,30 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
         response = self.client.get_token_accounts_by_owner(PublicKey(str(owner)), opt, commitment)
         return [self._parse_token_value(v) for v in response["result"]["value"]]
 
+    def get_snapshot_nft_holders(self, owner: Optional[Union[PublicKey, str]] = None):
+        """Create a snapshot of wallets holding NFTs created by the owner.
+
+        :param owner: The owner address to query for NFTs.
+        """
+        owner = owner or self.keypair.public_key
+        nfts = self.get_all_nft_accounts_by_owner(owner = owner or self.keypair.public_key)
+        logger.info(f"got {len(nfts)} nfts, going to get their holders")
+        mints = [data.token for data in nfts]
+        asyncit = Asyncit(
+            save_output=True, save_as_json=True, pool_size=100, rate_limit=[{"period_sec": 5, "max_calls": 70}],
+            iter_indication=200
+        )
+        for mint in mints:
+            asyncit.run(self.get_current_holder, mint)
+        asyncit.wait()
+        holders = asyncit.get_output()
+
+        count_holders = defaultdict(lambda: 0)
+        for holder in holders:
+            count_holders[holder] += 1
+        items = list(count_holders.items())
+        items.sort(key=lambda x: x[1], reverse=True)
+
     def create_nft(self, name, symbol, seller_fee_basis_points, json_uri):
         """Mint a Metaplex NFT on Solana.
 

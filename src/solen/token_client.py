@@ -5,17 +5,19 @@ import logging
 from typing import Dict, List, Union, Optional
 from datetime import timedelta
 from functools import partial
+from collections import defaultdict
 
 import requests
 import spl.token.instructions as spl_token
 from asyncit.dicts import DotDict
 from solana.rpc.core import RPCException, UnconfirmedTxError
 from solana.publickey import PublicKey
+from solana.rpc.api import MemcmpOpt
 from solana.rpc.types import TxOpts
 from spl.token.client import Token
 from solana.transaction import Transaction
 from spl.token.constants import TOKEN_PROGRAM_ID
-from solana.rpc.commitment import COMMITMENT_RANKS, Confirmed, Finalized, Processed, Commitment
+from solana.rpc.commitment import Confirmed, Commitment
 from spl.token.instructions import TransferCheckedParams, transfer_checked
 
 from .context import Context
@@ -344,3 +346,28 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
         :param csv_path: Path to a csv file to retrieve transfer data for.
         """
         return self.bulk_transfer_token_handler.bulk_status(csv_path)
+
+    def snapshot(self, token_mint: Optional[str] = None):
+        """Get snapshot of token holders for a given token.
+
+        :param token_mint: Token mint to get snapshot for (default: configured token).
+        """
+        token_mint = token_mint or self.token_mint
+        memcmp_opts = [MemcmpOpt(offset=0, bytes=token_mint)]
+        result = self.client.get_program_accounts(pubkey=TOKEN_PROGRAM_ID,
+                                                  encoding="jsonParsed",
+                                                  data_size=165,
+                                                  memcmp_opts=memcmp_opts)
+
+        # extract owner to quantity dict
+        holders = defaultdict(lambda: 0)
+        for data in result['result']:
+            owner = data['account']['data']['parsed']['info']['owner']
+            amount = data['account']['data']['parsed']['info']['tokenAmount']['uiAmount']
+            holders[owner] += amount
+
+        # sort
+        items = list(holders.items())
+        items.sort(key=lambda x: x[1], reverse=True)
+
+        return items
