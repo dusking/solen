@@ -218,7 +218,7 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
         largest_accounts = self.get_historical_holders_associate_accounts(mint_address)
         return [self.get_owner_of_associate_account(a).decode("utf-8") for a in largest_accounts]
 
-    def get_current_holder(self, mint_address: str) -> str:
+    def get_current_holder(self, mint_address: str) -> DotDict:
         """get current holder owners for a given NFT.
 
         :param mint_address: mint address to query.
@@ -228,8 +228,13 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
         >>> nft_client.get_current_holder("7Sde2VNGTcHv5wmgrYTvGW9h8Umiob5MdTq6Y7BuTw7h")
             'FPqcXeEAt3WtRD8QcSVRcX9WD1zuM5xxvJQhfE9XJbLF'
         """
-        largest_accounts = self.get_historical_holders_associate_accounts(mint_address)
-        return self.get_owner_of_associate_account(largest_accounts[0]).decode("utf-8")
+        response = DotDict(mint_address=mint_address)
+        try:
+            largest_accounts = self.get_historical_holders_associate_accounts(mint_address)
+            owner = self.get_owner_of_associate_account(largest_accounts[0]).decode("utf-8")
+        except Exception as ex:
+            return response.update(ok=False, err=str(ex))
+        return response.update(ok=True, owner=owner)
 
     def get_transactions(self, mint_address: str) -> List[Dict]:
         """get historical transactions for a given NFT.
@@ -330,11 +335,12 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
         for mint in mints:
             asyncit.run(self.get_current_holder, mint)
         asyncit.wait()
-        holders = asyncit.get_output()
+        holders_data = asyncit.get_output()
 
         count_holders = Counter()
-        for holder in holders:
-            count_holders[holder] += 1
+        holders = [i.owner for i in holders_data]
+        for holder_data in holders:
+            count_holders[holder_data] += 1
 
         items = list(count_holders.items())
         items.sort(key=lambda x: x[1], reverse=True)
