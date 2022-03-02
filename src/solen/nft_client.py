@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import time
 import base64
@@ -120,6 +121,7 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
         >>> print(metadata.data.name) # doctest: +SKIP
         Monkey #3882
         """
+        response = DotDict(mint_key=mint_key)
         try:
             metadata_account = self.metadata.get_metadata_account(mint_key)
             metadata = base64.b64decode(self.client.get_account_info(metadata_account)["result"]["value"]["data"][0])
@@ -129,22 +131,51 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
                     *sorted(zip(metadata.data.share, metadata.data.verified, metadata.data.creators), reverse=True)
                 )
                 metadata.data.creators, metadata.data.share, metadata.data.verified = [list(i) for i in zipped]
-            return metadata
+            return response.update(ok=True, data=metadata)
         except Exception as ex:
             logger.error(f"failed ti get data for: {mint_key}, ex: {ex}")
-            return DotDict({})
+            return response.update(ok=False)
 
-    def get_uri_data(self, mint_key: str) -> DotDict:
+    def get_uri_data(self, mint_key: str, prettify_traits: bool = False) -> DotDict:
         """Get uri metadata for a given NFT.
 
         :param mint_key: The NFT address that needs to get its uri metadata.
+        :param prettify_traits: If true traits attributes will be added as properties.
         """
+        response = DotDict(mint_key=mint_key)
         on_chain_data = self.get_data(mint_key)
-        response = requests.get(on_chain_data.data.uri)
-        if response.status_code != 200:
-            logger.error(f"failed to get uri: {on_chain_data.data.uri}, status: {response.status_code}")
-            return DotDict({})
-        return DotDict(json.loads(response.content.decode("utf-8")))
+        if not on_chain_data.ok:
+            return response.update(ok=False, err="failed to get data")
+        on_chain_data = on_chain_data.data
+        response_uri = requests.get(on_chain_data.data.uri)
+        if response_uri.status_code != 200:
+            logger.error(f"failed to get uri: {on_chain_data.data.uri}, status: {response_uri.status_code}")
+            return response.update(ok=False)
+        data = DotDict(json.loads(response_uri.content.decode("utf-8")))
+        if prettify_traits:
+            traits = DotDict({})
+            for attr in data.attributes:
+                traits[attr["trait_type"].lower().replace(" ", "_")] = attr["value"]
+            data.traits = traits
+        return response.update(ok=True, data=data)
+
+    def bulk_get_uri_data(self, mint_key_list: List[str], prettify_traits: bool = False) -> List[DotDict]:
+        """Bulk call to get_data get_uri_data, to get the NFT metadata.
+
+        :param mint_key_list: mint address list to query
+        :param prettify_traits: prettify_traits: If true traits attributes will be added as properties (default False).
+        """
+        asyncit = Asyncit(
+            save_output=True,
+            save_as_json=True,
+            pool_size=200,
+            rate_limit=[{"period_sec": 5, "max_calls": 100}],
+            iter_indication=100,
+        )
+        for mint_key in mint_key_list:
+            asyncit.run(self.get_uri_data, mint_key, prettify_traits)
+        asyncit.wait()
+        return asyncit.get_output()
 
     def get_uri_with_updated_data(self, mint_key: str, **kwargs) -> DotDict:
         """Create arweave uri for a given NFT metadata with updated data.
@@ -155,7 +186,10 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
         """
         response = DotDict(mint_key=mint_key)
         self.set_arweave()
-        data = self.get_uri_data(mint_key)
+        uri_data_response = self.get_uri_data(mint_key)
+        if not uri_data_response.ok:
+            response.update(ok=False, err="failed to get uri data")
+        data = uri_data_response.data
         optional_nft_update_keys = {"name", "symbol", "description", "seller_fee_basis_points", "image", "external_url"}
         update_data_args = {k: v for k, v in kwargs.items() if k in optional_nft_update_keys}
         data.update(update_data_args)
@@ -458,11 +492,12 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
 
         logger.info(f"going to update token {mint_address} values: {kwargs}")
         current_data = self.get_data(mint_address, sort_creators_by_share=False)
-        if not current_data:
+        if not current_data.ok:
             logger.error(f"failed to update nft {mint_address}")
             return response.update(
                 err=f"failed to update nft {mint_address}", ok=False, time=self._elapsed_time(run_start)
             )
+        current_data = current_data.data
         data = dict(
             source_account=self.keypair,
             mint_address=PublicKey(mint_address),

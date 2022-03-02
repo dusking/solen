@@ -73,7 +73,7 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
         return str(timedelta(seconds=elapsed_time)).split(".", maxsplit=1)[0]
 
     def get_registered_info(self, **kwargs) -> List[Dict]:
-        """return Solana registered token info.
+        """Return Solana registered token info.
 
         :param kwargs: filter param - can get only one filter option from the following:
            [address, symbol, name, tags] (Default is address of configured token).
@@ -81,6 +81,9 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
         >>> from solen import TokenClient
         >>> token_client = TokenClient("main")
         >>> token_client.get_registered_info(symbol="TINY")
+
+        The result is a list of items from `https://github.com/solana-labs/token-list` that been filtered
+        by the given arguments.
         """
         if len(kwargs) == 0:
             kwargs = {"address": self.token_mint}
