@@ -195,7 +195,7 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
         token = self.token_mint
         decimals = self.token_decimals
         run_start = self.clock_time()
-        response = DotDict(dest=dest, amount=amount, confirmed=False, signature="")
+        response = DotDict(token=token, dest=dest, amount=amount, confirmed=False, signature="")
         amount_lamport = int(amount * pow(10, self.token_decimals))
         logger.info(f"going to transfer {amount} ({amount_lamport} lamport) from local wallet to {dest}")
         if dry_run:
