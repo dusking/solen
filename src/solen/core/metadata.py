@@ -28,7 +28,12 @@ class Metadata:
         pass
 
     def get_metadata(self, client, mint_key):
+        logger.info(f"get metadata for: {mint_key}")
         metadata_account = self.get_metadata_account(mint_key)
+        account_info = client.get_account_info(metadata_account)
+        if not account_info["result"]["value"]:
+            logger.error(f"failed to get account_info for: {metadata_account} ({mint_key})")
+            return None
         data = base64.b64decode(client.get_account_info(metadata_account)["result"]["value"]["data"][0])
         metadata = self.unpack_metadata_account(data)
         return metadata

@@ -37,6 +37,7 @@ class Context:  # pylint: disable=too-many-instance-attributes
         self.config = None
         self.keypair = None
         self.account = None
+        self.keypair_file = None
         self.rpc_endpoint = None
         self.configured_token_mint = None
         self.clock_time = time.perf_counter
@@ -48,31 +49,37 @@ class Context:  # pylint: disable=too-many-instance-attributes
         self.init(self.env)
         logger.info(f"Solana client env: {self.env} - {self.rpc_endpoint}")
 
+    @property
+    def public_key(self):
+        return self.keypair.public_key
+
     def init(self, env: str):
         # pylint: disable=no-member
         """Init Solen instance based on env parameter."""
         self.env = env or self.config.solana.default_env
-        if self.env not in self.config.endpoints:
-            valid_rpc_options = list(self.config.endpoints.keys())
-            logger.error(f"env {self.env} does not exists in config file. valid options: {valid_rpc_options}")
-            raise Exception(f"missing env {self.env} in config")
-        self.rpc_endpoint = self.config.endpoints.get(self.env)
+        self.rpc_endpoint = self.config.endpoints.get(f"{self.env}_rpc_url")
         if not self.rpc_endpoint:
-            raise Exception(f"missing env {self.env} in config file")
-        with open_utf8(os.path.expanduser(self.config.solana.get(f"{self.env}_keypair"))) as f:
-            content = f.read()
-            private_key = bytes(json.loads(content))
-        self.account = Account(content[:32])
-        self.keypair = Keypair.from_secret_key(private_key)
+            raise Exception(f"missing `{self.env}_rpc_url` in config file (endpoints section)")
+        self.keypair_file = self.config.solana.get(f"{self.env}_keypair")
+        if not self.keypair_file:
+            raise Exception(f"missing `{self.env}_keypair` in config file (solana section)")
+        self.set_keypair(self.keypair_file)
         self.client = Client(self.rpc_endpoint, commitment=Confirmed)
         self.configured_token_mint = self.config.addresses.get(f"{self.env}_token")
         if not self.configured_token_mint:
-            logger.warning(f"missing {self.env} token in config file")
+            logger.warning(f"missing `{self.env}_token` in config file (addresses section)")
 
     def reload_config(self, env: Optional[str] = None):
         env = env or self.env
         self.config.load()
         self.init(env)
+
+    def set_keypair(self, id_file_path: str):
+        with open_utf8(os.path.expanduser(id_file_path)) as f:
+            content = f.read()
+            private_key = bytes(json.loads(content))
+        self.account = Account(content[:32])
+        self.keypair = Keypair.from_secret_key(private_key)
 
     @property
     def my_address(self):

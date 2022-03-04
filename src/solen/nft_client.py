@@ -43,7 +43,10 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
 
     def __init__(self, env: str, context: Context = None):
         """Init NFT Client."""
-        self.env = env
+        if env and context:
+            logger.error("Need to init with env or context - not both")
+        if not env and not context:
+            logger.error("Need to init with env or context")
         self.context = context or Context(env)
         self.client = self.context.client
         self.keypair = self.context.keypair
@@ -65,9 +68,13 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
         self.clock_time = time.perf_counter
         self.run_start = self.clock_time()
         self.arweave = None
-        self.api = API(self.keypair)
+        self.api = API(self.context)
         os.makedirs(self.transfers_data_folder, exist_ok=True)
         os.makedirs(self.updates_data_folder, exist_ok=True)
+
+    @property
+    def env(self):
+        return self.context.env
 
     def _set_start_time(self):
         self.run_start = self.clock_time()
@@ -393,7 +400,9 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
 
         The json structure can be found at https://medium.com/metaplex/metaplex-metadata-standard-45af3d04b541.
         """
-        deploy_response = self.api.create_new_token_contract(name, symbol, seller_fee_basis_points)
+        deploy_response = self.api.create_new_token_contract(
+            name, symbol, seller_fee_basis_points, max_timeout=50, max_retries=3
+        )
         if not deploy_response.ok:
             logger.error(f"failed to deploy NFT contract, ex: {deploy_response.err}")
             return deploy_response
@@ -403,7 +412,9 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
         )
         contract_key = deploy_response.contract
         destination_pub_key = self.keypair.public_key
-        mint_response = self.api.mint_nft(contract_key, destination_pub_key, json_uri)
+        mint_response = self.api.mint_nft(
+            contract_key, destination_pub_key, json_uri, max_timeout=50, max_retries=3, supply=0
+        )
         mint_response.token_mint = deploy_response.contract
         return mint_response
 

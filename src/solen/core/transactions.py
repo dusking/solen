@@ -7,11 +7,14 @@ from typing import Union
 
 from construct import Bytes, Int8ul
 from construct import Struct as cStruct  # type: ignore
+from asyncit.dicts import DotDict
 from solana.sysvar import SYSVAR_RENT_PUBKEY
 from solana.keypair import Keypair
 from solana.rpc.api import Client
+from solana.rpc.core import RPCException
 from solana.publickey import PublicKey
 from solana.rpc.types import TxOpts
+from solana.exceptions import SolanaRpcException
 from solana.transaction import AccountMeta, Transaction, TransactionInstruction
 from spl.token._layouts import MINT_LAYOUT, ACCOUNT_LAYOUT
 from spl.token.constants import TOKEN_PROGRAM_ID
@@ -68,6 +71,7 @@ class Transactions:
         payer: PublicKey,
         supply: Union[int, None],
     ):
+        logger.info(f"creating master edition instruction for: {mint}")
         edition_account = self.metadata.mint_authority(mint)
         metadata_account = self.metadata.get_metadata_account(mint)
         if supply is None:
@@ -134,40 +138,57 @@ class Transactions:
         max_timeout=60,
         target=20,
         finalized=True,
-    ):
+    ) -> DotDict:
         client = Client(api_endpoint)
         signers = list(map(Keypair, set(map(lambda s: s.seed, signers))))
-        for attempt in range(max_retries):
+        for attempt in range(1, max_retries + 1):
             try:
+                logger.info(f"attempt {attempt} to execute transaction")
                 result = client.send_transaction(tx, *signers, opts=TxOpts(skip_preflight=True))
+                logger.info(f"execute transaction signature result: {result}")
                 signatures = [x.signature for x in tx.signatures]
-                if not skip_confirmation:
-                    self.await_confirmation(client, signatures, max_timeout, target, finalized)
-                return result
+                if skip_confirmation:
+                    return DotDict(result)
+                if self.await_confirmation(client, signatures, max_timeout, target, finalized):
+                    return DotDict(result).update(ok=True)
+            except RPCException as ex:
+                message = dict(ex.args[0])["message"]
+                logger.error(f"Failed attempt {attempt}, RPC error: {message}")
+                time.sleep(1)
+            except SolanaRpcException as ex:
+                message = dict(ex.args[0])["message"]
+                logger.error(f"Failed attempt {attempt}, RPC ex: {message}")
+                time.sleep(1)
             except Exception as ex:
-                logger.error(f"Failed attempt {attempt}: {ex}")
-                continue
-        return None
+                logger.exception(f"Failed attempt {attempt}: {ex}")
+                time.sleep(1)
+        return DotDict(ok=False)
 
-    def await_confirmation(self, client, signatures, max_timeout=60, target=20, finalized=True):
-        elapsed = 0
-        while elapsed < max_timeout:
-            sleep_time = 1
-            time.sleep(sleep_time)
-            elapsed += sleep_time
-            resp = client.get_signature_statuses(signatures)
-            if resp["result"]["value"][0] is not None:
+    def await_confirmation(self, client, signatures, max_timeout=60, target=20, finalized=True) -> bool:
+        logger.info(f"going to wait {max_timeout} sec for confirmations")
+        signatures = signatures if isinstance(signatures, list) else [signatures]
+        run_start = time.perf_counter()
+        sleep_time = 1
+        while time.perf_counter() - run_start < max_timeout:
+            elapsed = int(time.perf_counter() - run_start)
+            resp = client.get_signature_statuses(signatures, search_transaction_history=True)
+            error = resp.get("error")
+            if error:
+                logger.error(f"failed to get signature status: {error}")
+            elif resp["result"]["value"][0] is not None:
                 confirmations = resp["result"]["value"][0]["confirmations"]
                 is_finalized = resp["result"]["value"][0]["confirmationStatus"] == "finalized"
-            else:
-                continue
-            if not finalized:
-                if confirmations >= target or is_finalized:
+                logger.info(f"transaction {signatures} confirmed by {confirmations} validators")
+                if not finalized:
+                    if confirmations >= target or is_finalized:
+                        logger.info(f"Took {elapsed} seconds to confirm transaction")
+                        return True
+                elif is_finalized:
                     logger.info(f"Took {elapsed} seconds to confirm transaction")
-                    return
-            elif is_finalized:
-                logger.info(f"Took {elapsed} seconds to confirm transaction")
-                return
+                    return True
+            time.sleep(sleep_time)
+        logger.error("timeout occurred on waiting for transaction")
+        return False
 
     def wallet(self):
         """Generate a new random public/private keypair of a wallet and return the address and private key.
@@ -211,14 +232,13 @@ class Transactions:
         return tx, signers
 
     def create_mint_account_transactions(self, api_endpoint, source_account, name, symbol, fees):
-        """create a new NFT token by
+        """Deploy - create a new NFT token by
         - Creating a new account from a randomly generated address (invokes CreateAccount from the System Program)
         - Invoking InitializeMint on the new account
         - Initializing the metadata for this account by invoking the
             CreateMetatdata instruction from the Metaplex protocol
 
         :param api_endpoint: (str) The RPC endpoint to connect the network. (devnet, mainnet)
-        :param contract_key: (str) The base58 encoded public key of the mint address
         """
         # Initalize Client
         client = Client(api_endpoint)
@@ -230,15 +250,15 @@ class Transactions:
         # Start transaction
         tx = Transaction()
         # Get the minimum rent balance for a mint account
-        min_rent_reseponse = client.get_minimum_balance_for_rent_exemption(MINT_LAYOUT.sizeof())  # type: ignore
-        lamports = min_rent_reseponse["result"]
+        lamports = client.get_minimum_balance_for_rent_exemption(MINT_LAYOUT.sizeof()).get("result")
+        space = MINT_LAYOUT.sizeof()
         # Generate Mint
         create_mint_account_ix = create_account(
             CreateAccountParams(
                 from_pubkey=source_account.public_key,
                 new_account_pubkey=mint_account.public_key,
                 lamports=lamports,
-                space=MINT_LAYOUT.sizeof(),
+                space=space,
                 program_id=token_account,
             )
         )

@@ -1,34 +1,27 @@
 import json
-import struct
 import logging
-from typing import Union
 
-import base58
 from construct import Struct as cStruct  # type: ignore
 from asyncit.dicts import DotDict
-from solana.sysvar import SYSVAR_RENT_PUBKEY
-from solana.publickey import PublicKey
-from solana.transaction import AccountMeta, TransactionInstruction
-from cryptography.fernet import Fernet
-from spl.token.constants import TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID
-from solana.system_program import SYS_PROGRAM_ID as SYSTEM_PROGRAM_ID
 
-from .constants import METADATA_PROGRAM_ID
+from ..context import Context
 from .transactions import Transactions
 
 logger = logging.getLogger(__name__)
 
 
 class API:
-    def __init__(self, keypair):
+    def __init__(self, context: Context):
+        self.context = context
         self.transactions = Transactions()
-        self.api_endpoint = "https://api.devnet.solana.com/"
-        self.keypair = keypair
-        self.cipher = "m2UjyUOoffXHUIiOTpTU5dvPU26Ib7k7rTKieYEanzQ"
 
-    @staticmethod
-    def create_decryption_key():
-        return Fernet.generate_key().decode("ascii")
+    @property
+    def keypair(self):
+        return self.context.keypair
+
+    @property
+    def api_endpoint(self):
+        return self.context.rpc_endpoint
 
     def create_new_token_contract(
         self,
@@ -65,14 +58,14 @@ class API:
                 target=target,
                 finalized=finalized,
             )
-            if not response:
+            if not response or not response.ok:
                 logger.error("failed to deploy token contract")
-            response = DotDict(response)
+                return response
             response.contract = contract
             response.status = 200
             return response.update(ok=True)
         except Exception as ex:
-            return DotDict(ok=True, err=str(ex), status=400)
+            return DotDict(ok=False, err=str(ex), status=400)
 
     def topup(
         self,
@@ -118,6 +111,7 @@ class API:
         supply=1,
     ) -> DotDict:
         """Mints an NFT to an account, updates the metadata and creates a master edition."""
+        logger.info(f"going to mint {dest_key}")
         tx, signers = self.transactions.create_mint_transaction(
             self.api_endpoint, self.keypair, contract_key, dest_key, link, supply=supply
         )

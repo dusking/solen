@@ -216,13 +216,11 @@ class BulkHandler:  # pylint: disable=too-many-instance-attributes
         timeout = time.time() + timeout
         resp = {}
         last_confirmation_amount = 0
-        max_retries = 60
         confirmed = False
         response = DotDict(signature=tx_sig, confirmed=confirmed)
         if response_extra:
             response.update(response_extra)
-        while max_retries and time.time() < timeout:
-            max_retries -= 1
+        while time.time() < timeout:
             resp = self.client.get_signature_statuses([tx_sig], search_transaction_history=True)
             maybe_rpc_error = resp.get("error")
             if maybe_rpc_error is not None:

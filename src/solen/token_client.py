@@ -42,8 +42,11 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
 
     def __init__(self, env: str, token_mint: str = None, context: Context = None):
         """Init Token Client."""
-        self.env = env
-        self.context = context or Context(self.env)
+        if env and context:
+            logger.error("Need to init with env or context - not both")
+        if not env and not context:
+            logger.error("Need to init with env or context")
+        self.context = context or Context(env)
         self.client = self.context.client
         self.keypair = self.context.keypair
         self.config_folder = self.context.config_folder
@@ -63,6 +66,10 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
         self.token = Token(self.client, PublicKey(self.token_mint), TOKEN_PROGRAM_ID, self.keypair)
         self.token_decimals = self.get_token_decimals()
         os.makedirs(self.transfers_data_folder, exist_ok=True)
+
+    @property
+    def env(self):
+        return self.context.env
 
     def _set_start_time(self):
         self.run_start = self.clock_time()
