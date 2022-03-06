@@ -145,8 +145,10 @@ class Transactions:
             try:
                 logger.info(f"attempt {attempt} to execute transaction")
                 result = client.send_transaction(tx, *signers, opts=TxOpts(skip_preflight=True))
-                logger.info(f"execute transaction signature result: {result}")
-                signatures = [x.signature for x in tx.signatures]
+                transaction_signature = result["result"]
+                logger.info(f"execute transaction signature: {transaction_signature}")
+                # signatures = [x.signature for x in tx.signatures]
+                signatures = [transaction_signature]
                 if skip_confirmation:
                     return DotDict(result)
                 if self.await_confirmation(client, signatures, max_timeout, target, finalized):
@@ -178,7 +180,9 @@ class Transactions:
             elif resp["result"]["value"][0] is not None:
                 confirmations = resp["result"]["value"][0]["confirmations"]
                 is_finalized = resp["result"]["value"][0]["confirmationStatus"] == "finalized"
-                logger.info(f"transaction {signatures} confirmed by {confirmations} validators")
+                if confirmations:
+                    logger.info(f"wait for confirmation - transaction {signatures} confirmed "
+                                f"by {confirmations} validators")
                 if not finalized:
                     if confirmations >= target or is_finalized:
                         logger.info(f"Took {elapsed} seconds to confirm transaction")

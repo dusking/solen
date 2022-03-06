@@ -58,7 +58,7 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
             self.client,
             self.env,
             self.updates_data_folder,
-            self.update_token_metadata,
+            self.update_nft,
             self.bulk_sum_info,
             "update",
             ["mint_address"],
@@ -439,7 +439,7 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
             destination, amount=1, dry_run=dry_run, skip_confirmation=skip_confirmation, commitment=commitment
         )
 
-    def update_token_metadata(  # pylint: disable=too-many-return-statements
+    def update_nft(  # pylint: disable=too-many-return-statements
         self,
         mint_address: str,
         max_retries=1,
@@ -480,8 +480,8 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
         >>>              {'address': 'abcb6D4n8LGrzGpncShKFxkD8dpGKM3KoZ6yrmSrazzz',
         >>>               'verified': 0,
         >>>               'share': 100}]
-        >>> response = nft_client.update_token_metadata("CF4wMo1YnK44BL8R8ZpEUpY4iskWX5KAHbRXMUvpqnJL",
-        >>>                                             name="Monkey 6001", creators=creators)
+        >>> response = nft_client.update_nft("CF4wMo1YnK44BL8R8ZpEUpY4iskWX5KAHbRXMUvpqnJL",
+        >>>                                  name="Monkey 6001", creators=creators)
 
         In case os an error, the signature will be in response.err,
         In case os succefull update, the signature will be in response.ok.
