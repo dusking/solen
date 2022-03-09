@@ -30,9 +30,9 @@ class SOLClient:  # pylint: disable=too-many-instance-attributes
     def __init__(self, env: str = None, context: Context = None):
         """Init Token Client."""
         if env and context:
-            logger.error("Need to init with env or context - not both")
+            logger.error("SOLClient - Need to init with env or context - not both")
         if not env and not context:
-            logger.error("Need to init with env or context")
+            logger.error("SOLClient - Need to init with env or context")
         self.context = context or Context(env)
         self.client = self.context.client
         self.transaction = Transactions()

@@ -1,5 +1,4 @@
 import os
-import re
 import json
 import time
 import base64
@@ -41,12 +40,12 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
     the RPC endpoint will be:`https://api.devnet.solana.com`
     """
 
-    def __init__(self, env: str, context: Context = None):
+    def __init__(self, env: str = None, context: Context = None):
         """Init NFT Client."""
         if env and context:
-            logger.error("Need to init with env or context - not both")
+            logger.error("NFTClient - Need to init with env or context - not both")
         if not env and not context:
-            logger.error("Need to init with env or context")
+            logger.error("NFTClient - Need to init with env or context")
         self.context = context or Context(env)
         self.client = self.context.client
         self.keypair = self.context.keypair
@@ -140,7 +139,7 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
                 metadata.data.creators, metadata.data.share, metadata.data.verified = [list(i) for i in zipped]
             return response.update(ok=True, data=metadata)
         except Exception as ex:
-            logger.error(f"failed ti get data for: {mint_key}, ex: {ex}")
+            logger.error(f"failed to get data for: {mint_key}, ex: {ex}")
             return response.update(ok=False)
 
     def get_uri_data(self, mint_key: str, prettify_traits: bool = False) -> DotDict:
@@ -434,7 +433,7 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
         :param skip_confirmation: If true send transfer will not be confirmed. It might be faster.
         :param commitment: The commitment type for send transfer.
         """
-        token_client = TokenClient(self.env, token_mint, self.context)
+        token_client = TokenClient(context=self.context, token_mint=token_mint)
         return token_client.transfer_token(
             destination, amount=1, dry_run=dry_run, skip_confirmation=skip_confirmation, commitment=commitment
         )
@@ -535,9 +534,9 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
             target=target,
             finalized=finalized,
         )
-        if not resp:
+        if not resp or not resp.ok:
             return response.update(err="failed to execute transaction", ok=False, time=self._elapsed_time(run_start))
-        transaction_signature = resp["result"]
+        transaction_signature = resp.result
         if skip_confirmation:
             return response.update(signature=transaction_signature, ok=True, time=self._elapsed_time(run_start))
         logger.info(f"going to verify update transaction signature: {transaction_signature}")

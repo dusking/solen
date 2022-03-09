@@ -40,12 +40,12 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
     the RPC endpoint will be: `https://api.devnet.solana.com`
     """
 
-    def __init__(self, env: str, token_mint: str = None, context: Context = None):
+    def __init__(self, env: str = None, context: Context = None, token_mint: str = None):
         """Init Token Client."""
         if env and context:
-            logger.error("Need to init with env or context - not both")
+            logger.error("TokenClient - Need to init with env or context - not both")
         if not env and not context:
-            logger.error("Need to init with env or context")
+            logger.error("TokenClient - Need to init with env or context")
         self.context = context or Context(env)
         self.client = self.context.client
         self.keypair = self.context.keypair

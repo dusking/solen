@@ -163,7 +163,7 @@ class Transactions:
                 time.sleep(1)
             except Exception as ex:
                 logger.exception(f"Failed attempt {attempt}: {ex}")
-                time.sleep(1)
+            time.sleep(2)
         return DotDict(ok=False)
 
     def await_confirmation(self, client, signatures, max_timeout=60, target=20, finalized=True) -> bool:
