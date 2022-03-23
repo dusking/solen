@@ -17,6 +17,7 @@ from solana.rpc.types import TokenAccountOpts
 from spl.token._layouts import ACCOUNT_LAYOUT
 from spl.token.constants import TOKEN_PROGRAM_ID
 from solana.rpc.commitment import Confirmed, Finalized, Commitment
+from spl.token.instructions import AuthorityType
 
 from .context import Context
 from .core.api import API
@@ -34,6 +35,8 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
     """NFT Client class.
 
     :param env: The Solana env (options are based on the config file)
+    :param token_mint: The token mint address, token commands will be based on that token.
+        (default taken from the config file)
 
     The Solana RPC endpoint is taken from the config file - based on the given env parameter.
     For example, using the :ref:`config file <index:config file>` in the example and "dev" parameter,
@@ -277,7 +280,7 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
         return response.update(ok=True, owner=owner)
 
     def get_transactions(self, mint_address: str) -> List[Dict]:
-        """get historical transactions for a given NFT.
+        """Get historical transactions for a given NFT.
 
         :param mint_address: mint address to query.
 
@@ -344,25 +347,31 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
             )
         )
 
-    def get_all_nft_accounts_by_owner(self, owner: Optional[Union[PublicKey, str]] = None) -> List:
+    def get_all_nft_accounts_by_owner(
+        self, owner: Optional[Union[PublicKey, str]] = None, only_if_current_holder: bool = True
+    ) -> List:
         """Get all NFT accounts owned by the given owner.
 
         :param owner: The owner address to query for NFTs.
+        :param only_if_current_holder: If true, accounts with balance 0 will be removed.
         """
         owner = owner or self.keypair.public_key
         commitment: Commitment = Finalized
         encoding: str = "jsonParsed"
         opt = TokenAccountOpts(program_id=TOKEN_PROGRAM_ID, encoding=encoding)
-        response = self.client.get_token_accounts_by_owner(PublicKey(str(owner)), opt, commitment)
-        return [self._parse_token_value(v) for v in response["result"]["value"]]
+        token_accounts_response = self.client.get_token_accounts_by_owner(PublicKey(str(owner)), opt, commitment)
+        response = [self._parse_token_value(v) for v in token_accounts_response["result"]["value"]]
+        if not only_if_current_holder:
+            return response
+        return [i for i in response if i.token_balance > 0]
 
-    def get_snapshot_nft_holders(self, owner: Optional[Union[PublicKey, str]] = None):
+    def snapshot_nft_holders(self, owner: Optional[Union[PublicKey, str]] = None):
         """Create a snapshot of wallets holding NFTs created by the owner.
 
         :param owner: The owner address to query for NFTs.
         """
         owner = owner or self.keypair.public_key
-        nfts = self.get_all_nft_accounts_by_owner(owner=owner or self.keypair.public_key)
+        nfts = self.get_all_nft_accounts_by_owner(owner=owner or self.keypair.public_key, only_if_current_holder=False)
         logger.info(f"got {len(nfts)} nfts, going to get their holders")
         mints = [data.token for data in nfts]
         asyncit = Asyncit(
@@ -447,6 +456,7 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
         target=20,
         finalized=True,
         dry_run=False,
+        remove_empty_values=True,
         **kwargs,
     ) -> DotDict:
         """Updates the metadata for a given NFT.
@@ -459,6 +469,7 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
         :param finalized: If true transaction confirmed only if it has status Finalized, else target is used
             to confirm transaction.
         :param dry_run: If true the transfer will not be executed.
+        :param remove_empty_values: If true, kwargs keys with empty value (values to update) will be removed.
         :param kwargs: The data that need to be changed. Options are: uri, name, symbol, fee, creators
 
         * uri : str
@@ -486,7 +497,8 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
         In case os succefull update, the signature will be in response.ok.
         """
         run_start = self.clock_time()
-        kwargs = {k: v for k, v in kwargs.items() if v}  # remove keys with None value
+        if remove_empty_values:
+            kwargs = {k: v for k, v in kwargs.items() if v}  # remove keys with None value
         response = DotDict(mint_address=mint_address, confirmed=False, signature="", **kwargs)
         new_creators = kwargs.get("creators")
         if new_creators:
@@ -500,6 +512,11 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
         else:
             creators_addresses = creators_verified = creators_share = None
 
+        if not kwargs:
+            logger.warning(f"update of {mint_address} failed, missing values to update")
+            return response.update(
+                err=f"failed to update {mint_address}, missing values", ok=False, time=self._elapsed_time(run_start)
+            )
         logger.info(f"going to update token {mint_address} values: {kwargs}")
         current_data = self.get_data(mint_address, sort_creators_by_share=False)
         if not current_data.ok:
@@ -565,6 +582,45 @@ class NFTClient:  # pylint: disable=too-many-instance-attributes
         return response.update(
             signature=transaction_signature, ok=True, confirmed=True, time=self._elapsed_time(run_start)
         )
+
+    def burn_nft(self, mint_address: str, destination_address: str) -> DotDict:
+        """Burn an NFT that holds by the current owner.
+        The function will burn the NFT token, close the assoiacted account and will clean the meta-data.
+
+        :param mint_address: The NFT mint address to burn
+        :param destination_address: Account to receive the remaining balance of the closed account.
+        It'll be charged for the transaction fee.
+        """
+        response = DotDict(mint_address=mint_address, confirmed=False, signature="")
+        token_client = TokenClient(context=self.context, token_mint=mint_address)
+        token_account = token_client.get_associated_address()
+        logger.info(f"going to burn token: {mint_address}, associated account: {token_account}")
+        burn_response = self.api.burn_nft(mint_address, skip_confirmation=False)
+        if not burn_response.ok:
+            logger.error(f"failed to burn nft: {mint_address}")
+            return response.update(burn_response)
+        logger.info(f"going to close associated account: {token_account}")
+        close_account_response = token_client.token.close_account(
+            account=PublicKey(token_account), dest=PublicKey(destination_address), authority=token_client.keypair
+        )
+        signature = close_account_response.get("result")
+        confirmed = self.transaction.await_confirmation(self.client, signature)
+        if not confirmed:
+            logger.error(f"failed to close burned nft {mint_address} account: {token_account}")
+            return response.update(ok=False)
+        logger.info(f"going to clean data of token: {mint_address}")
+        empty_data = {
+            "name": "",
+            "symbol": "",
+            "uri": "",
+            "fee": 0,
+            "creators": None,
+        }
+        update_response = self.update_nft(mint_address=mint_address, remove_empty_values=False, **empty_data)
+        if not update_response.ok:
+            logger.error(f"failed to clean burned nft: {mint_address}")
+            return response.update(update_response)
+        return response.update(signature=signature, ok=confirmed)
 
     def bulk_update_init(self, csv_path: str):
         """Create the bulk update config based on given CSV file.

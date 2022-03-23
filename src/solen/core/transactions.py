@@ -166,7 +166,8 @@ class Transactions:
             time.sleep(2)
         return DotDict(ok=False)
 
-    def await_confirmation(self, client, signatures, max_timeout=60, target=20, finalized=True) -> bool:
+    @staticmethod
+    def await_confirmation(client, signatures, max_timeout=60, target=20, finalized=True) -> bool:
         logger.info(f"going to wait {max_timeout} sec for confirmations")
         signatures = signatures if isinstance(signatures, list) else [signatures]
         run_start = time.perf_counter()
@@ -181,8 +182,9 @@ class Transactions:
                 confirmations = resp["result"]["value"][0]["confirmations"]
                 is_finalized = resp["result"]["value"][0]["confirmationStatus"] == "finalized"
                 if confirmations:
-                    logger.info(f"wait for confirmation - transaction {signatures} confirmed "
-                                f"by {confirmations} validators")
+                    logger.info(
+                        f"wait for confirmation - transaction {signatures} confirmed " f"by {confirmations} validators"
+                    )
                 if not finalized:
                     if confirmations >= target or is_finalized:
                         logger.info(f"Took {elapsed} seconds to confirm transaction")
@@ -423,7 +425,7 @@ class Transactions:
         tx = tx.add(spl_transfer_ix)
         return tx, signers
 
-    def burn(self, api_endpoint: str, contract_key: str, owner_key: str, private_key):
+    def create_burn_transaction(self, api_endpoint: str, contract_key: str, owner_key: str, private_key):
         """Burn a token, permanently removing it from the blockchain.
         Return a status flag of success or fail and the native transaction data.
 
@@ -439,7 +441,7 @@ class Transactions:
         token_account = TOKEN_PROGRAM_ID
         mint_account = PublicKey(contract_key)
         # List signers
-        signers = [Keypair(private_key)]
+        signers = [private_key]
         # Start transaction
         tx = Transaction()
         # Find PDA for sender

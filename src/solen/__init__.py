@@ -1,5 +1,6 @@
 import sys
 
+from .scan import Scan
 from .context import Context
 from .version import __version__
 from .nft_client import NFTClient

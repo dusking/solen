@@ -29,7 +29,7 @@ def update(mint_address, env=None, **kwargs):
     log_print.header(f"Update NFT {mint_address} (env: {env})")
     update_data = dict(name=kwargs.get("name"), symbol=kwargs.get("symbol"), uri=kwargs.get("uri"))
     nft_client = NFTClient(env)
-    update_response = nft_client.update_token_metadata(mint_address, **update_data)
+    update_response = nft_client.update_nft(mint_address, **update_data)
     print(dict_to_pt(update_response, align="l"))
 
 

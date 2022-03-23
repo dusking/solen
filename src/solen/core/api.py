@@ -130,3 +130,29 @@ class API:
         response = DotDict(execute_response)
         response.status = 200
         return response
+
+    def burn_nft(self, mint_address, max_retries=3, skip_confirmation=False, max_timeout=60, target=20, finalized=True):
+        """Burn a token, permanently removing it from the blockchain.
+        Return a status flag of success or fail and the native transaction data.
+        """
+        tx, signers = self.transactions.create_burn_transaction(
+            api_endpoint=self.api_endpoint,
+            contract_key=mint_address,
+            owner_key=self.keypair.public_key,
+            private_key=self.keypair,
+        )
+        execute_response = self.transactions.execute(
+            self.api_endpoint,
+            tx,
+            signers,
+            max_retries=max_retries,
+            skip_confirmation=skip_confirmation,
+            max_timeout=max_timeout,
+            target=target,
+            finalized=finalized,
+        )
+        if not execute_response:
+            return DotDict(ok=False)
+        response = DotDict(execute_response)
+        response.status = 200
+        return response

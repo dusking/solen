@@ -155,12 +155,13 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
             logger.error(f"failed to retrieve balance.. error: {ex}")
             return 0
 
-    def get_associated_address(self, owner: str, token: Optional[str] = None) -> PublicKey:
+    def get_associated_address(self, owner: str = None, token: Optional[str] = None) -> PublicKey:
         """Derives the associated token address for the given dest address and token mint.
 
         :param owner: The owner address that need to query for token associated address.
         :param token: The token need to query for associated address in the given address (default: configured token).
         """
+        owner = owner or self.keypair.public_key
         token = token or self.token_mint
         return spl_token.get_associated_token_address(PublicKey(owner), PublicKey(token))
 
@@ -357,7 +358,7 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
         """
         return self.bulk_transfer_token_handler.bulk_status(csv_path)
 
-    def snapshot(self, token_mint: Optional[str] = None):
+    def snapshot_holders(self, token_mint: Optional[str] = None):
         """Get snapshot of token holders for a given token.
 
         :param token_mint: Token mint to get snapshot for (default: configured token).

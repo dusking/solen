@@ -8,7 +8,14 @@ from solana.keypair import Keypair
 from solana.rpc.core import RPCException
 from solana.publickey import PublicKey
 from solana.transaction import Transaction
-from solana.system_program import SYS_PROGRAM_ID, TransferParams, CreateAccountParams, transfer, create_account
+from solana.system_program import (
+    SYS_PROGRAM_ID,
+    TransferParams,
+    CreateAccountParams,
+    transfer,
+    create_account,
+    create_account_with_seed,
+)
 
 from .context import Context
 from .core.transactions import Transactions
@@ -18,9 +25,10 @@ open_utf8 = partial(open, encoding="UTF-8")
 
 
 class SOLClient:  # pylint: disable=too-many-instance-attributes
-    """SOL client class.
+    """SOL client class. The client can be created with a given env or context - not both.
 
-    :param env: The Solana env (options are based on the config file)
+    :param env: The Solana env (options are based on the config file).
+    :param context: The client Context.
 
     The Solana RPC endpoint is taken from the config file - based on the given env parameter.
     For example, using the :ref:`config file <index:config file>`: in the example and "dev" parameter,
