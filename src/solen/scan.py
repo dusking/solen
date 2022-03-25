@@ -29,19 +29,6 @@ class Scan:
         until_transaction = block["result"]["transactions"][0]["transaction"]["signatures"]
         return self.client.get_confirmed_signature_for_address2(PublicKey(address), limit=limit)
 
-    def get_transaction_data(self, signatures: str) -> DotDict:
-        transaction = DotDict(self.client.get_transaction(signatures))
-        if transaction.error:
-            logger.error(f"failed to get transaction data for {signatures}")
-            return DotDict(ok=False, err=transaction.error.message)
-        if not transaction["result"]:
-            logger.error(f"failed to get transaction data for {signatures}")
-            return DotDict(ok=False)
-        data = DotDict(transaction["result"]["meta"])
-        if len(data.preTokenBalances) > 0:
-            logger.info(f"it is NFT {data.preTokenBalances[0]['mint']} transfer transaction: {signatures}")
-        return DotDict(ok=True, data=data)
-
     def get_nft_transfers(self, mint_address):
         nft_client = NFTClient(context=self.context)
         return nft_client.get_transactions(mint_address)

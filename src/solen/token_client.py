@@ -22,6 +22,7 @@ from spl.token.instructions import TransferCheckedParams, transfer_checked
 
 from .context import Context
 from .response import Ok, Err, Response
+from .core.transactions import Transactions
 from .utils.bulk_handler import BulkHandler
 
 logger = logging.getLogger(__name__)
@@ -358,8 +359,9 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
         """
         return self.bulk_transfer_token_handler.bulk_status(csv_path)
 
-    def snapshot_holders(self, token_mint: Optional[str] = None):
+    def snapshot_holders(self, token_mint: Optional[str] = None) -> List:
         """Get snapshot of token holders for a given token.
+        The result is list of holders address and token amount for the holder.
 
         :param token_mint: Token mint to get snapshot for (default: configured token).
         """
@@ -381,3 +383,17 @@ class TokenClient:  # pylint: disable=too-many-instance-attributes
         items.sort(key=lambda x: x[1], reverse=True)
 
         return items
+
+    def get_transactions_for_address(self, address: str, limit: int = 100) -> List[DotDict]:
+        """Get transactions data for a given address.
+        Transactions returned backwards in time.
+
+        :param address: Address to be queried.
+        :param limit: (optional) Search until this transaction signature, if found before limit reached.
+        """
+        transactions = Transactions()
+        address = self.get_associated_address(address, self.token_mint)
+        signatures_data = self.client.get_confirmed_signature_for_address2(PublicKey(address), limit=limit)
+        signatures = [i["signature"] for i in signatures_data["result"]]
+        return [transactions.get_transaction_data(self.context.rpc_endpoint, s) for s in signatures]
+

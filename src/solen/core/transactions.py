@@ -4,6 +4,7 @@ import base64
 import struct
 import logging
 from typing import Union
+from datetime import datetime, timedelta
 
 from construct import Bytes, Int8ul
 from construct import Struct as cStruct  # type: ignore
@@ -461,3 +462,56 @@ class Transactions:
         )
         tx = tx.add(burn_ix)
         return tx, signers
+
+    def get_transaction_data(self, api_endpoint: str, signature: str) -> DotDict:
+        """Get a detailed data for a given signature.
+
+        :param api_endpoint: The RPC endpoint to connect the network.
+        :param signature: The signature to query and get data for.
+        """
+        def round_date(date):
+            return date.replace(hour=0, minute=0, second=0, microsecond=0)
+
+        def add_sum_data(data: DotDict) -> DotDict:
+            data = DotDict(data)
+            data["sum"] = DotDict(signature=signature)
+            timestamp = data.get("blockTime")
+            if not timestamp:
+                return data
+            data["sum"]["datetime"] = datetime.fromtimestamp(timestamp)
+            data["sum"]["elapsed_calendar_days"] = (round_date(datetime.today()) -
+                                                    round_date(datetime.fromtimestamp(timestamp))).days
+            elapsed_time = datetime.today() - datetime.fromtimestamp(timestamp)
+            data["sum"]["elapsed_time"] = str(elapsed_time).split(".", maxsplit=1)[0]
+            if len(data.meta.preTokenBalances) > 0:
+                try:
+                    amount_before = float(data.meta.preTokenBalances[1]["uiTokenAmount"]["uiAmountString"])
+                    amount_after = float(data.meta.postTokenBalances[1]["uiTokenAmount"]["uiAmountString"])
+                    token_decimals = int(data.meta.postTokenBalances[1]["uiTokenAmount"]["decimals"])
+                    transfer_amount = round(float(amount_after - amount_before), token_decimals)
+                except Exception:
+                    logger.warning(f"failed to get amount for transaction")
+                    amount_before = amount_after = transfer_amount = None
+                data["sum"]["type"] = "transfer"
+                data["sum"]["transfer"] = DotDict({
+                    "token": data.meta.preTokenBalances[0]['mint'],
+                    "from": data.meta.preTokenBalances[0]["owner"],
+                    "to": data.meta.preTokenBalances[1]["owner"],
+                    "amount_before": amount_before,
+                    "amount_after": amount_after,
+                    "change_amount": transfer_amount
+                })
+            return data
+
+        client = Client(api_endpoint)
+        transaction = DotDict(client.get_transaction(signature))
+        if transaction.error:
+            logger.error(f"failed to get transaction data for {signature}")
+            return DotDict(ok=False, err=transaction.error.message)
+        if not transaction["result"]:
+            logger.error(f"failed to get transaction data for {signature}")
+            return DotDict(ok=False)
+        data = add_sum_data(transaction["result"])
+        if len(data.meta.preTokenBalances) > 0:
+            logger.info(f"it is a {data.meta.preTokenBalances[0]['mint']} transfer transaction")
+        return DotDict(ok=True, data=data)
