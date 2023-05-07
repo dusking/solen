@@ -3,7 +3,7 @@ Solen - A Solana Token Util
 [![PypI](http://img.shields.io/pypi/v/solen.svg)](http://img.shields.io/pypi/v/solen.svg)
 
 
-Solen is a base Python util for Solana based token commands. You can use it as a CLI tool and as a python library.
+Solen is a Python based util for Solana based token commands. You can use it as a CLI tool and as a python library.
 
 Features:
 * Balance of local wallet for SOL / Token
